@@ -13,13 +13,22 @@ module.exports = {
         title:'#303133',
         text:'#272525',
         blue:'#0086CA',
+        grey:'#121212',
+        green:'#10A142',
+        red:'#E54F53', 
+        orange: '#F29425',
+        violet: '#2D5F8B'
        
       },
       fontFamily: {
-        nunito: ['Nunito', 'sans-serif'],
-        poppins: ['Poppins', 'sans-serif'],
+        nunito: ['Nunito'],
+        poppins: ['Poppins'],
       
       },
+      screens :{
+        xs: '430px'
+      }
+
 
     },
   },

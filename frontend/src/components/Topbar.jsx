@@ -5,7 +5,7 @@ function Topbar() {
     const userName = useState('Lotmani Reda')
     return (
 
-        <div className="flex items-center justify-between bg-blue_top pr-8 pl-16 py-4">
+        <div className="flex items-center justify-between bg-blue_top pr-8 pl-8 sm:pl-16 py-4">
             <div className="flex justify-center flex-col text-start">
                 <div className="flex items-center">
                 
@@ -18,7 +18,7 @@ function Topbar() {
                 </div>
             </div>
 
-            <div className="flex items-center ml-4">
+            <div className="hidden sm:flex items-center ml-4">
                 <FaRegUser className="mr-2" />
                 <span>Profil</span>
             </div>

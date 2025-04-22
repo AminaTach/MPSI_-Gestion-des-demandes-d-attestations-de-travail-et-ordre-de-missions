@@ -5,6 +5,7 @@ import StatsCard from '../components/Dashboard/StatsCard';
 import Table from '../components/Dashboard/Table';
 import RenderedPieChart from '../components/Dashboard/RenderedPiehart';
 import { FaRegCalendarAlt, FaRegFileAlt, FaRegUser } from 'react-icons/fa';
+import MonthlyDemandsChart from '../components/Dashboard/MonthlyDemandsChart';
 
 const Dashboard = () => {
     const attestationData = [
@@ -25,9 +26,9 @@ const Dashboard = () => {
     ];
 
     return (
-        <div className=" w-[3/4] ">
+        <div className="w-full pb-4 font-nunito sm:w-[3/4]  ">
             <Header />
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 px-4 md:px-8">
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 gap-4 py-8 mt-4 px-4 md:px-8">
                 <StatsCard
                     title="Attestation de travail en attente"
                     value="46"
@@ -47,7 +48,7 @@ const Dashboard = () => {
                     percentage={2}
                 />
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 px-4 md:px-8">
+            <div className="grid grid-cols-1 lg:grid-cols-[60%_40%] gap-4 mt-2 px-4 md:px-8">
                 <Table title="Attestation de travail" data={attestationData} />
                 <div className="bg-white shadow-md rounded-lg p-4">
                     <div className="text-xl font-bold mb-4">Total des demandes selon leur état</div>
@@ -56,8 +57,14 @@ const Dashboard = () => {
                     </div>
                 </div>
             </div>
-            <div className="mt-4 px-4 md:px-8">
+
+            <div className="grid grid-cols-1 lg:grid-cols-[60%_40%] gap-4 mt-4 px-4 md:px-8">
                 <Table title="Ordres de missions" data={ordresDeMissionData} />
+                <div className="bg-white shadow-md rounded-lg p-4">
+                    <div className="flex justify-start">
+                        <MonthlyDemandsChart />
+                    </div>
+                </div>
             </div>
         </div>
     );

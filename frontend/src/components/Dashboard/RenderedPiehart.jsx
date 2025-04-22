@@ -2,11 +2,11 @@
 import React from 'react';
 import { PieChart, Pie, Cell, Tooltip, Legend } from 'recharts';
 
-const COLORS = ['#00C49F', '#FFBB28', '#FF8042'];
+const COLORS = ['orange','green',  'red'];
 
 const RenderedPieChart = ({ data }) => {
   return (
-    <PieChart width={300} height={300}>
+    <PieChart width={300} height={300} className=' rounded-2xl'>
       <Pie
         data={data}
         cx={150}
