@@ -32,7 +32,7 @@ const OrdreMissionForm = () => {
     <div className="w-full pb-4 font-nunito sm:w-[3/4] ">
       <Header />
       <div class="h-2"></div>
-      <div className="max-w-5xl mx-auto mt-8 p-6 bg-white shadow-md rounded-lg">
+      <div className="max-w-6xl mx-4  bg-white gap-4 py-8 mt-4 px-4 md:px-8 rounded-3xl shadow-md">
         <h1 className="text-2xl font-bold text-center text-[#2D5F8B] mb-6 flex justify-center space-x-2 rtl:space-x-reverse">
           <span>Ordre de mission</span>
           <span>أمر بمهمة</span>

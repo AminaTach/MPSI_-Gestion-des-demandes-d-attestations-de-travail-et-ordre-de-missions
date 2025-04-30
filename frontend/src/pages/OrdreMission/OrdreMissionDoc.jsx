@@ -7,7 +7,7 @@ const OrdreMissionDoc = () => {
     id: "01",
     demandeur: "Laouar Boutheyna",
     date: "25/03/2025",
-    message: "message",
+    message: "message,messagemessagemessagemessagemessagemessagemessagemessagemessagemessagemessagemessagemessagemessagemessagemessagemessage",
     etat: "En attente",
   };
 
@@ -27,13 +27,13 @@ const OrdreMissionDoc = () => {
   return (
     <div className="w-full pb-4 font-nunito sm:w-[3/4]  ">
       <Header />
-      <div className="max-w-6xl mx-auto mt-10 bg-white p-6 rounded-3xl shadow-md">
+      <div className="grid grid-cols-1 bg-white max-w-6xl mx-4   gap-4 py-8 mt-4 px-4 md:px-8 rounded-3xl shadow-md">
         <h2 className="text-2xl font-semibold mb-6">
           Traitement de l’ordre de mission de:
         </h2>
 
-        <div className="overflow-auto">
-          <table className="min-w-full text-sm text-left">
+        <div className="overflow-auto ">
+          <table className=" w-full text-sm text-left">
             <thead>
               <tr className="text-gray-600">
                 <th className="px-4 py-2">S/N</th>
@@ -48,7 +48,10 @@ const OrdreMissionDoc = () => {
                 <td className="px-4 py-2">{order.id}</td>
                 <td className="px-4 py-2">{order.demandeur}</td>
                 <td className="px-4 py-2">{order.date}</td>
-                <td className="px-4 py-2">{order.message}</td>
+                <td className="px-4 py-2 max-w-xs break-words whitespace-normal">
+                  {order.message}
+                </td>
+
                 <td className={`px-4 py-2 ${getStatusColor(order.etat)}`}>
                   {order.etat}
                 </td>
