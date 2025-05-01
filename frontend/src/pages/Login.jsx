@@ -68,7 +68,12 @@ export default function LoginPage() {
                     <span className="mx-2 text-gray-500">Ou</span>
                     <div className="border-t border-gray-300 w-1/3" />
                 </div>
-                <button className="w-full border border-gray-300 py-2 rounded flex items-center justify-center gap-2 hover:bg-gray-100">
+                <button
+                    onClick={() => {
+                        window.location.href = "http://localhost:8000/google/login/";
+                    }}
+                    className="w-full border border-gray-300 py-2 rounded flex items-center justify-center gap-2 hover:bg-gray-100"
+                >
                     <img
                         src={go}
                         alt="Google Logo"
@@ -76,6 +81,7 @@ export default function LoginPage() {
                     />
                     Connexion avec Google @esi.dz
                 </button>
+
             </div>
         </div>
     );
