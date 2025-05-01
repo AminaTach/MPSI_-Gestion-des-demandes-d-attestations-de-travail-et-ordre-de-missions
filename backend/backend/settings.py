@@ -78,9 +78,9 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'mpsi_project', #nom de la base de données
         'USER': 'postgres',  # ton nom d'utilisateur PostgreSQL
-        'PASSWORD': 'bouty21000',  # ton mot de passe PostgreSQL
+        'PASSWORD': 'newpassword', # ton mot de passe PostgreSQL
         'HOST': 'localhost',
-        'PORT': '5432',  
+        'PORT': '5433',  
     }
 }
 
