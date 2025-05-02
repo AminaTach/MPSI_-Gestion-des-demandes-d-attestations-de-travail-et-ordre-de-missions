@@ -13,6 +13,7 @@ import ForgotPasswordPage from "./pages/ForgetPW";
 import OrdreMissionForm from "./pages/OrdreMission/OrdreMissionForm";
 import OrdreMissionTable from "./pages/OrdreMission/OrdreMissionTable";
 import OrdreMissionDoc from "./pages/OrdreMission/OrdreMissionDoc";
+import RH from "./pages/RH";
 
 function AppContent({ role }) {
   const location = useLocation();
@@ -25,6 +26,8 @@ function AppContent({ role }) {
       {!hideSidebar && <Sidebar role={role} />}
       <div className="flex-grow">
         <Routes>
+          <Route path="/" element={<RH />} />
+
           <Route path="/rh/dashboard" element={<Dashboard />} />
           <Route path="/login" element={<Login />} />
           <Route path="/forgetpassword" element={<ForgotPasswordPage />} />
