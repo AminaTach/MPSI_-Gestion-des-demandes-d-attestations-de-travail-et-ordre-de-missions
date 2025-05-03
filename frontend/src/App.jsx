@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { GoogleOAuthProvider } from '@react-oauth/google';
 import {
   BrowserRouter as Router,
   Route,
@@ -49,10 +50,13 @@ function App() {
   const [role, setRole] = useState("rh");
 
   return (
-    <Router>
-      <AppContent role={role} />
-    </Router>
+    <GoogleOAuthProvider clientId="318367454563-v857090khdr2rk94jff2apmh0ifq7irh.apps.googleusercontent.com">
+      <Router>
+        <AppContent role={role} />
+      </Router>
+    </GoogleOAuthProvider>
   );
+
 }
 
 export default App;
