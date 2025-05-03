@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 import os
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -57,7 +58,6 @@ ROOT_URLCONF = 'backend.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
         'DIRS': [os.path.join(BASE_DIR, 'templates')],
         'APP_DIRS': True,
         'OPTIONS': {
@@ -78,6 +78,7 @@ REST_FRAMEWORK = {
 }
 
 
+
 WSGI_APPLICATION = 'backend.wsgi.application'
 
 
@@ -89,9 +90,9 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'mpsi_project', #nom de la base de données
         'USER': 'postgres',  # ton nom d'utilisateur PostgreSQL
-        'PASSWORD': 'newpassword', # ton mot de passe PostgreSQL
+        'PASSWORD': 'CallOutMyName000@@', # ton mot de passe PostgreSQL
         'HOST': 'localhost',
-        'PORT': '5433',  
+        'PORT': '5432',  
     }
 }
 
