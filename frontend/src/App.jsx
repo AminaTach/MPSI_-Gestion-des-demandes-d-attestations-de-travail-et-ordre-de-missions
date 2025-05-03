@@ -13,9 +13,9 @@ import ForgotPasswordPage from "./pages/ForgetPW";
 import OrdreMissionForm from "./pages/OrdreMission/OrdreMissionForm";
 import OrdreMissionTable from "./pages/OrdreMission/OrdreMissionTable";
 import OrdreMissionDoc from "./pages/OrdreMission/OrdreMissionDoc";
-import RhDocuments from "./pages/RH/RhDocuments";
-import AttestationsTravail from "./pages/RH/Attestations";
-import AttesView from "./pages/ViewAttes";
+import RH from "./pages/RH";
+import ViewAttes from "./pages/RH/ViewAttes";
+import AttestationsTravail from "./components/AttestationsTravail";
 
 function AppContent({ role }) {
   const location = useLocation();
@@ -28,17 +28,11 @@ function AppContent({ role }) {
       {!hideSidebar && <Sidebar role={role} />}
       <div className="flex-grow">
         <Routes>
-          <Route path="/" element={<RH />} />
+          <Route path="/RhDocuments" element={<RH />} />
+          <Route path="/AttestationsRH" element={<AttestationsTravail />} />
+          <Route path="/ViewAttes" element={<ViewAttes />} />
 
           <Route path="/rh/dashboard" element={<Dashboard />} />
-          <Route
-            path="/rh/AttestationsTravail"
-            element={<AttestationsTravail />}
-          />
-          <Route path="/RhAttes" element={<AttesView />} />
-
-          <Route path="/rh/ListeAttestations" element={<RhDocuments />} />
-
           <Route path="/login" element={<Login />} />
           <Route path="/forgetpassword" element={<ForgotPasswordPage />} />
           {/* RH Ordre Mission */}
