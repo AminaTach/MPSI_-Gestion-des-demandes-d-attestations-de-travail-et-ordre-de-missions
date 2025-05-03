@@ -14,6 +14,9 @@ import ForgotPasswordPage from "./pages/ForgetPW";
 import OrdreMissionForm from "./pages/OrdreMission/OrdreMissionForm";
 import OrdreMissionTable from "./pages/OrdreMission/OrdreMissionTable";
 import OrdreMissionDoc from "./pages/OrdreMission/OrdreMissionDoc";
+import DeposerDemande from './pages/DeposerDemande';
+import SuiviDemandes from './pages/SuiviDemande';
+import TelechargerDocuments from './pages/TelechargerDocs';
 
 function AppContent({ role }) {
   const location = useLocation();
@@ -29,6 +32,9 @@ function AppContent({ role }) {
           <Route path="/rh/dashboard" element={<Dashboard />} />
           <Route path="/" element={<Login />} />
           <Route path="/forgetpassword" element={<ForgotPasswordPage />} />
+          <Route path="/employee/demande" element={<DeposerDemande />} />
+          <Route path="/employee/suivi" element={<SuiviDemandes/>} />
+          <Route path="/employee/docs" element={<TelechargerDocuments/>} />
           {/* RH Ordre Mission */}
           <Route path="/rh/ordremissionform" element={<OrdreMissionForm />} />
           <Route path="/rh/ordremissiontable" element={<OrdreMissionTable />} />
