@@ -7,7 +7,3 @@ admin.site.register(DemandeAttestation)
 admin.site.register(DemandeOrdreMission)
 admin.site.register(OrdreMission)
 
-admin.site.register(User)
-admin.site.register(DemandeAttestation)
-admin.site.register(DemandeOrdreMission)
-admin.site.register(OrdreMission)
