@@ -17,6 +17,7 @@ import OrdreMissionDoc from "./pages/OrdreMission/OrdreMissionDoc";
 import DeposerDemande from './pages/DeposerDemande';
 import SuiviDemandes from './pages/SuiviDemande';
 import TelechargerDocuments from './pages/TelechargerDocs';
+import RH from "./pages/RH";
 
 function AppContent({ role }) {
   const location = useLocation();
@@ -29,6 +30,7 @@ function AppContent({ role }) {
       {!hideSidebar && <Sidebar role={role} />}
       <div className="flex-grow">
         <Routes>
+
           <Route path="/rh/dashboard" element={<Dashboard />} />
           <Route path="/" element={<Login />} />
           <Route path="/forgetpassword" element={<ForgotPasswordPage />} />
@@ -40,6 +42,7 @@ function AppContent({ role }) {
           <Route path="/rh/ordremissiontable" element={<OrdreMissionTable />} />
           <Route path="/rh/ordremissiondoc" element={<OrdreMissionDoc />} />
           {/* Add other routes here */}
+          <Route path="/rh/docs" element={<RH />} />
         </Routes>
       </div>
     </div>
