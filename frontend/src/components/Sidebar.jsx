@@ -14,13 +14,15 @@ import dash from "../images/sidebar/dashboard.svg";
 import swich from "../images/sidebar/switch.svg";
 import attes from "../images/sidebar/attestation.svg";
 
-
-
-
 const Sidebar = ({ role }) => {
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+
+  const handleLogout = () => {
+    localStorage.removeItem("user");
+    navigate("/");
+  };
 
   const menuItems = {
     employee: [
@@ -46,9 +48,7 @@ const Sidebar = ({ role }) => {
   };
 
   const footerItems = [
-    { label: "Profil", icon: Depot, path: "/profil" },
-    { label: "Paramètres", icon: Depot, path: "/parametres" },
-    { label: "Déconnexion", icon: logout, path: "/logout" },
+    { label: "Déconnexion", icon: logout, onClick: handleLogout },
   ];
 
   const getItemClass = (path) => {
@@ -74,8 +74,12 @@ const Sidebar = ({ role }) => {
           <li
             key={item.label}
             onClick={() => {
-              navigate(item.path);
-              if (isMobile) setIsOpen(false);
+              if (item.onClick) {
+                item.onClick();
+              } else {
+                navigate(item.path);
+                if (isMobile) setIsOpen(false);
+              }
             }}
             className={getItemClass(item.path)}
           >
