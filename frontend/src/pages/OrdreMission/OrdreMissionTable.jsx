@@ -26,7 +26,7 @@ const OrdreMissionTable = () => {
       id: "03",
       demandeur: "Laouar Boutheyna",
       date: "25/03/2025",
-      message: "Message",
+      message: "Message Message MessageMessage",
       etat: "En attente",
     },
     {
@@ -53,9 +53,8 @@ const OrdreMissionTable = () => {
 
   return (
     <div className="w-full pb-4 font-nunito sm:w-[3/4]  ">
-      <Header />
-      <div class="h-10"></div>
-      <div className="p-6 bg-white rounded-3xl shadow-md max-w-6xl mx-auto">
+    <Header />
+    <div className="grid grid-cols-1 bg-white max-w-6xl mx-4   gap-4 py-8 mt-4 px-4 md:px-8 rounded-3xl shadow-md">
         <h2 className="text-2xl font-semibold mb-6">Ordres de missions</h2>
 
         <div className="flex flex-wrap gap-4 mb-6">
@@ -75,7 +74,7 @@ const OrdreMissionTable = () => {
         </div>
 
         <div className="overflow-auto">
-          <table className="min-w-full text-sm text-left">
+          <table className="w-full overflow-x-auto text-sm text-left">
             <thead>
               <tr className="text-gray-600 border-b">
                 <th className="px-4 py-2">S/N</th>
@@ -95,17 +94,15 @@ const OrdreMissionTable = () => {
                   <td className="px-4 py-3">{order.id}</td>
                   <td className="px-4 py-3">{order.demandeur}</td>
                   <td className="px-4 py-3">{order.date}</td>
-                  <td className="px-4 py-3 truncate max-w-xs">
+                  <td className="px-4 py-3 max-w-xs whitespace-normal break-words">
                     {order.message}
                   </td>
                   <td
-                    className={`px-4 py-3 font-medium ${getStatusColor(
-                      order.etat
-                    )}`}
+                    className={`px-4 py-3 font-medium ${getStatusColor(order.etat)}`}
                   >
                     {order.etat}
                   </td>
-                  <td className="px-4 py-3 flex items-center gap-4 text-sky-400">
+                  <td className="px-4 py-3 flex items-center justify-center gap-4 text-sky-400">
                     <Plus
                       className="cursor-pointer hover:scale-110 z-10"
                       onClick={() => {
@@ -123,6 +120,7 @@ const OrdreMissionTable = () => {
                 </tr>
               ))}
             </tbody>
+
           </table>
         </div>
       </div>

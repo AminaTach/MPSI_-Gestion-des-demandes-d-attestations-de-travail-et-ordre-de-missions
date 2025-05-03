@@ -13,11 +13,14 @@ import ForgotPasswordPage from "./pages/ForgetPW";
 import OrdreMissionForm from "./pages/OrdreMission/OrdreMissionForm";
 import OrdreMissionTable from "./pages/OrdreMission/OrdreMissionTable";
 import OrdreMissionDoc from "./pages/OrdreMission/OrdreMissionDoc";
+import DeposerDemande from './pages/DeposerDemande';
+import SuiviDemandes from './pages/SuiviDemande';
+import TelechargerDocuments from './pages/TelechargerDocs';
 
 function AppContent({ role }) {
   const location = useLocation();
 
-  const hideSidebarRoutes = ["/login", "/forgetpassword"];
+  const hideSidebarRoutes = ["/", "/forgetpassword"];
   const hideSidebar = hideSidebarRoutes.includes(location.pathname);
 
   return (
@@ -26,8 +29,11 @@ function AppContent({ role }) {
       <div className="flex-grow">
         <Routes>
           <Route path="/rh/dashboard" element={<Dashboard />} />
-          <Route path="/login" element={<Login />} />
+          <Route path="/" element={<Login />} />
           <Route path="/forgetpassword" element={<ForgotPasswordPage />} />
+          <Route path="/employee/demande" element={<DeposerDemande />} />
+          <Route path="/employee/suivi" element={<SuiviDemandes/>} />
+          <Route path="/employee/docs" element={<TelechargerDocuments/>} />
           {/* RH Ordre Mission */}
           <Route path="/rh/ordremissionform" element={<OrdreMissionForm />} />
           <Route path="/rh/ordremissiontable" element={<OrdreMissionTable />} />
