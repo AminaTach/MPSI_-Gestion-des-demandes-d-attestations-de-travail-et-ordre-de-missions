@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { GoogleOAuthProvider } from '@react-oauth/google';
 import {
   BrowserRouter as Router,
   Route,
@@ -17,7 +18,7 @@ import OrdreMissionDoc from "./pages/OrdreMission/OrdreMissionDoc";
 function AppContent({ role }) {
   const location = useLocation();
 
-  const hideSidebarRoutes = ["/login", "/forgetpassword"];
+  const hideSidebarRoutes = ["/", "/forgetpassword"];
   const hideSidebar = hideSidebarRoutes.includes(location.pathname);
 
   return (
@@ -26,7 +27,7 @@ function AppContent({ role }) {
       <div className="flex-grow">
         <Routes>
           <Route path="/rh/dashboard" element={<Dashboard />} />
-          <Route path="/login" element={<Login />} />
+          <Route path="/" element={<Login />} />
           <Route path="/forgetpassword" element={<ForgotPasswordPage />} />
           {/* RH Ordre Mission */}
           <Route path="/rh/ordremissionform" element={<OrdreMissionForm />} />
@@ -43,10 +44,13 @@ function App() {
   const [role, setRole] = useState("rh");
 
   return (
-    <Router>
-      <AppContent role={role} />
-    </Router>
+    <GoogleOAuthProvider clientId="318367454563-v857090khdr2rk94jff2apmh0ifq7irh.apps.googleusercontent.com">
+      <Router>
+        <AppContent role={role} />
+      </Router>
+    </GoogleOAuthProvider>
   );
+
 }
 
 export default App;
