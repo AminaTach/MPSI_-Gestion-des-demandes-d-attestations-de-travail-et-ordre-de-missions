@@ -16,9 +16,15 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from gestion.views import RequestStatsView, google_login, create_demande_attestation, create_demande_ordre_mission, get_all_demandes_attestation, get_all_demandes_ordre_mission
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', include('gestion.urls')),
-    
+    path('api/stats/', RequestStatsView.as_view(), name='api_request_stats'),
+    path("api/google-login/", google_login, name="google_login"),
+    path('api/demande-attestation/create/', create_demande_attestation, name='create_demande_attestation'),
+    path('api/demande-ordre-mission/create/', create_demande_ordre_mission, name='create_demande_ordre_mission'),
+    path('api/demande-attestation/all/', get_all_demandes_attestation, name='get_all_demandes_attestation'),
+    path('api/demande-ordre-mission/all/', get_all_demandes_ordre_mission, name='get_all_demandes_ordre_mission'),
 ]
+

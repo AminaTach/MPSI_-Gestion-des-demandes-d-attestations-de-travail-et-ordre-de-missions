@@ -48,7 +48,7 @@ const OrdreMissionTable = () => {
   }
 
   return (
-    <div className="w-full pb-4 font-nunito sm:w-[3/4]">
+    <div className="w-full  pb-4 font-nunito sm:w-[3/4]">
       <Header />
       <div className="grid grid-cols-1 bg-white max-w-6xl mx-4 gap-4 py-8 mt-4 px-4 md:px-8 rounded-3xl shadow-md">
         <h2 className="text-2xl font-semibold mb-6">Ordres de missions</h2>

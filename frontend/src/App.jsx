@@ -25,7 +25,7 @@ function AppContent({ role }) {
   const hideSidebar = hideSidebarRoutes.includes(location.pathname);
 
   return (
-    <div className="flex flex-col sm:flex-row bg-bleu_bg">
+    <div className="flex flex-col sm:flex-row bg-bleu_bg min-h-screen">
       {!hideSidebar && <Sidebar role={role} />}
       <div className="flex-grow">
         <Routes>
