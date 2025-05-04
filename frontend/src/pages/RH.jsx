@@ -1,14 +1,11 @@
 import React from "react";
-import ListAttes from "../components/RH/AttestationsTravail";
-import ViewAttes from "./ViewAttes";
-import TabDocs from "../components/RH_docs";
+import RH_docs from "../components/RH_docs";
 
 const RH = () => {
   return (
-    <div className="w-full h-screen flex justify-center items-center m-10 ">
-      {/* <ListAttes></ListAttes> */}
-      {/* <ViewAttes></ViewAttes> */}
-      <TabDocs></TabDocs>
+    <div className="h-full  flex justify-center items-center">
+      <RH_docs />
+      {/* Add any other components or content you want to display here */}
     </div>
   );
 };

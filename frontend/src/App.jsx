@@ -18,6 +18,9 @@ import DeposerDemande from './pages/DeposerDemande';
 import SuiviDemandes from './pages/SuiviDemande';
 import TelechargerDocuments from './pages/TelechargerDocs';
 import PrivateRoute from "./components/PrivateRoute";
+import ViewAttes from "./pages/RH/ViewAttes";
+import AttestationsTravail from "./components/AttestationsTravail";
+import RH from './pages/RH'
 
 function AppContent({ role, setRole }) {
   const location = useLocation();
@@ -31,6 +34,9 @@ function AppContent({ role, setRole }) {
       <div className="flex-grow">
         <Routes>
           <Route path="/" element={<Login />} />
+
+
+
           <Route path="/forgetpassword" element={<ForgotPasswordPage />} />
           <Route element={<PrivateRoute role={role} />}>
             <Route path="/rh/dashboard" element={<Dashboard />} />
@@ -42,6 +48,9 @@ function AppContent({ role, setRole }) {
             <Route path="/rh/ordremissiontable" element={<OrdreMissionTable />} />
             <Route path="/rh/ordremissiondoc" element={<OrdreMissionDoc />} />
             {/* Add other protected routes here */}
+            <Route path="/rh/docs" element={<RH />} />
+            <Route path="/rh/attestation" element={<AttestationsTravail />} />
+            <Route path="/ViewAttes" element={<ViewAttes />} />
           </Route>
           {/* Add other public routes here */}
         </Routes>
@@ -60,9 +69,7 @@ function App() {
     }
   }, []);
 
-  if (role === null) {
-    return <div>Loading...</div>; // You can add a loading spinner or any other loading indicator here
-  }
+ 
 
   return (
     <GoogleOAuthProvider clientId="318367454563-v857090khdr2rk94jff2apmh0ifq7irh.apps.googleusercontent.com">
