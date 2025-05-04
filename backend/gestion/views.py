@@ -5,7 +5,14 @@ from django.views.decorators.csrf import csrf_exempt
 from google.oauth2 import id_token
 from google.auth.transport import requests
 from datetime import datetime
-from .models import User, DemandeOrdreMission, DemandeAttestation, DemandeAttestation, DemandeOrdreMission
+from .models import User, DemandeOrdreMission, DemandeAttestation, OrdreMission
+from django.shortcuts import get_object_or_404
+from django.template.loader import render_to_string
+from django.http import HttpResponse
+from django.conf import settings
+import io
+from weasyprint import HTML 
+import os
 
 @csrf_exempt
 def google_login(request):
@@ -324,3 +331,672 @@ def get_user_demands(request):
             return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
     return JsonResponse({'success': False, 'message': 'Méthode non autorisée'}, status=405)
+
+
+@csrf_exempt
+def generate_work_certificate(request, demande_id):
+    """Generate a work certificate (attestation de travail) PDF for a specific request."""
+    try:
+        # Get the attestation request
+        demande = get_object_or_404(DemandeAttestation, id_dem_attest=demande_id)
+        
+        # Check if the request is approved
+        if demande.Etat != 'validee':
+            return JsonResponse({
+                'success': False, 
+                'message': 'Cette demande n\'est pas encore validée.'
+            }, status=400)
+        
+        # Get the user details
+        user = demande.user
+        
+        # Format the date in Arabic style
+        today = datetime.now()
+        formatted_date = today.strftime("%Y/%m/%d")
+        
+        # Build the absolute path to static files
+        static_base_url = request.build_absolute_uri(settings.STATIC_URL)
+        
+        # Prepare the context for the template
+        context = {
+            'nom_arabe': user.nom_arabe,
+            'prenom_arabe': user.prenom_arabe,
+            'date_naissance': user.dateNais.strftime("%Y/%m/%d"),
+            'lieu_naissance': user.Lieu_Nais,
+            'grade': user.Grade,
+            'date_embauche': user.Date1erEmbauche.strftime("%Y/%m/%d"),
+            'current_date': formatted_date,
+            'ref_number': f"م م/م و ع/{today.year}/{demande_id}",
+            # Use the complete URL for static files
+            'static_url': static_base_url,
+        }
+        
+        # Create absolute path to the template
+        template_path = os.path.join(settings.BASE_DIR, 'templates', 'rh', 'work_certificate_template.html')
+        
+        # Check if the template exists
+        if not os.path.exists(template_path):
+            return JsonResponse({
+                'success': False, 
+                'message': f'Template not found at {template_path}'
+            }, status=500)
+        
+        # Modify the template with embedded fonts instead of linked fonts
+        with open(template_path, 'r', encoding='utf-8') as f:
+            template_content = f.read()
+        
+        # Render the HTML template with context
+        html_string = render_to_string('rh/work_certificate_template.html', context)
+        
+        # Set base URL for WeasyPrint to properly resolve static files
+        base_url = request.build_absolute_uri('/')
+        
+        # Create the PDF file
+        pdf_file = io.BytesIO()
+        HTML(string=html_string, base_url=base_url).write_pdf(pdf_file)
+        pdf_file.seek(0)
+        
+        # Update the request with the generated PDF
+        filename = f"attestation_travail_{user.nom_latin}_{user.prenom_latin}.pdf"
+        if demande.Piece_jointe:
+            demande.Piece_jointe.delete()  # Remove old file if it exists
+        demande.Piece_jointe.save(filename, pdf_file)
+        demande.save()
+        
+        # Create a fresh copy for downloading
+        pdf_file.seek(0)
+        
+        # Return the PDF as download
+        response = HttpResponse(pdf_file, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        
+        return response
+        
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"Error generating PDF: {error_details}")
+        return JsonResponse({'success': False, 'error': str(e), 'details': error_details}, status=500)
+
+@csrf_exempt
+def update_demande_attestation_status(request, demande_id):
+    """Update the status of a work certificate request."""
+    if request.method == 'POST':
+        try:
+            import json
+            data = json.loads(request.body)
+            new_status = data.get('status')
+            
+            if new_status not in ['en_attente', 'rejetee', 'validee']:
+                return JsonResponse({'success': False, 'message': 'Statut invalide'}, status=400)
+                
+            demande = get_object_or_404(DemandeAttestation, id_dem_attest=demande_id)
+            demande.Etat = new_status
+            demande.save()
+            
+            return JsonResponse({
+                'success': True, 
+                'message': 'Statut mis à jour avec succès',
+                'new_status': new_status
+            })
+            
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)}, status=400)
+            
+    return JsonResponse({'success': False, 'message': 'Méthode non autorisée'}, status=405)
+
+@csrf_exempt
+def get_user_demandes_attestation(request, user_id):
+    """Get all work certificate requests for a specific user."""
+    if request.method == 'GET':
+        try:
+            user = get_object_or_404(User, email=user_id)
+            demandes = DemandeAttestation.objects.filter(user=user).values(
+                'id_dem_attest', 'Message_dem_attest', 'Etat', 'Date', 'Piece_jointe'
+            )
+            return JsonResponse({'success': True, 'demandes': list(demandes)})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)}, status=400)
+    return JsonResponse({'success': False, 'message': 'Méthode non autorisée'}, status=405)
+
+@csrf_exempt
+def bulk_update_demandes_attestation(request):
+    """Update multiple work certificate requests at once."""
+    if request.method == 'POST':
+        try:
+            import json
+            data = json.loads(request.body)
+            demande_ids = data.get('demande_ids', [])
+            new_status = data.get('status')
+            
+            if not demande_ids:
+                return JsonResponse({'success': False, 'message': 'Aucune demande spécifiée'}, status=400)
+                
+            if new_status not in ['en_attente', 'rejetee', 'validee']:
+                return JsonResponse({'success': False, 'message': 'Statut invalide'}, status=400)
+                
+            # Update all the specified requests
+            DemandeAttestation.objects.filter(id_dem_attest__in=demande_ids).update(Etat=new_status)
+            
+            return JsonResponse({
+                'success': True, 
+                'message': f'{len(demande_ids)} demandes mises à jour avec succès',
+                'updated_ids': demande_ids,
+                'new_status': new_status
+            })
+            
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)}, status=400)
+            
+    return JsonResponse({'success': False, 'message': 'Méthode non autorisée'}, status=405)
+
+@csrf_exempt
+def delete_demande_attestation(request, demande_id):
+    """Delete a work certificate request."""
+    if request.method == 'DELETE':
+        try:
+            # Find the attestation request
+            demande = get_object_or_404(DemandeAttestation, id_dem_attest=demande_id)
+            
+            # Delete any attached files if they exist
+            if demande.Piece_jointe:
+                demande.Piece_jointe.delete()
+            
+            # Delete the request itself
+            demande.delete()
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Demande d\'attestation supprimée avec succès'
+            })
+            
+        except Exception as e:
+            import traceback
+            error_details = traceback.format_exc()
+            print(f"Error deleting attestation: {error_details}")
+            return JsonResponse({
+                'success': False, 
+                'message': f'Erreur lors de la suppression: {str(e)}',
+                'details': error_details
+            }, status=500)
+            
+    return JsonResponse({
+        'success': False, 
+        'message': 'Méthode non autorisée'
+    }, status=405)
+
+@csrf_exempt
+def get_attestation_details(request, demande_id):
+    """Get the details of an attestation request."""
+    if request.method == 'GET':
+        try:
+            # Get the attestation request
+            demande = get_object_or_404(DemandeAttestation, id_dem_attest=demande_id)
+            
+            # Get the user associated with the request
+            user = demande.user
+            
+            # Prepare the response data
+            response_data = {
+                'success': True,
+                'demande': {
+                    'id': demande.id_dem_attest,
+                    'message': demande.Message_dem_attest,
+                    'etat': demande.Etat,
+                    'date': demande.Date,
+                    'piece_jointe': str(demande.Piece_jointe) if demande.Piece_jointe else None,
+                },
+                'user': {
+                    'id': user.id_user,
+                    'username': user.username,
+                    'email': user.email,
+                    'nom_arabe': user.nom_arabe,
+                    'prenom_arabe': user.prenom_arabe,
+                    'eps_arabe': user.eps_arabe,
+                    'nom_latin': user.nom_latin,
+                    'prenom_latin': user.prenom_latin,
+                    'genre': user.genre,
+                    'dateNais': user.dateNais.strftime('%Y-%m-%d'),
+                    'Lieu_Nais': user.Lieu_Nais,
+                    'Grade': user.Grade,
+                    'Date1erEmbauche': user.Date1erEmbauche.strftime('%Y-%m-%d'),
+                    'Stu_Adm': user.Stu_Adm,
+                }
+            }
+                
+            return JsonResponse(response_data)
+            
+        except Exception as e:
+            import traceback
+            error_details = traceback.format_exc()
+            print(f"Error getting attestation details: {error_details}")
+            return JsonResponse({'success': False, 'error': str(e)}, status=400)
+            
+    return JsonResponse({'success': False, 'message': 'Méthode non autorisée'}, status=405)
+
+@csrf_exempt
+def update_attestation_details(request, demande_id):
+    """Update the details of an attestation request."""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            
+            # Get the attestation request
+            demande = get_object_or_404(DemandeAttestation, id_dem_attest=demande_id)
+            
+            # Update status if provided
+            if 'status' in data:
+                new_status = data.get('status')
+                if new_status in ['en_attente', 'rejetee', 'validee']:
+                    demande.Etat = new_status
+            
+            # Update message if provided
+            if 'message' in data:
+                demande.Message_dem_attest = data.get('message')
+            
+            # Save the changes
+            demande.save()
+            
+            return JsonResponse({
+                'success': True, 
+                'message': 'Détails de la demande d\'attestation mis à jour avec succès',
+                'demande_id': demande.id_dem_attest,
+                'status': demande.Etat,
+                'message': demande.Message_dem_attest
+            })
+            
+        except Exception as e:
+            import traceback
+            error_details = traceback.format_exc()
+            print(f"Error updating attestation details: {error_details}")
+            return JsonResponse({'success': False, 'error': str(e), 'details': error_details}, status=400)
+            
+    return JsonResponse({'success': False, 'message': 'Méthode non autorisée'}, status=405)
+
+@csrf_exempt
+def get_user_details(request, user_id):
+    """Get the details of a user."""
+    if request.method == 'GET':
+        try:
+            # Get the user
+            user = get_object_or_404(User, id_user=user_id)
+            
+            # Prepare the response data
+            response_data = {
+                'success': True,
+                'user': {
+                    'id': user.id_user,
+                    'username': user.username,
+                    'email': user.email,
+                    'type': user.type,
+                    'nom_arabe': user.nom_arabe,
+                    'prenom_arabe': user.prenom_arabe,
+                    'eps_arabe': user.eps_arabe,
+                    'nom_latin': user.nom_latin,
+                    'prenom_latin': user.prenom_latin,
+                    'genre': user.genre,
+                    'dateNais': user.dateNais.strftime('%Y-%m-%d'),
+                    'Lieu_Nais': user.Lieu_Nais,
+                    'Grade': user.Grade,
+                    'Date1erEmbauche': user.Date1erEmbauche.strftime('%Y-%m-%d'),
+                    'Stu_Adm': user.Stu_Adm,
+                }
+            }
+            
+            # Get counts of attestation requests by status
+            attestation_stats = {
+                'en_attente': DemandeAttestation.objects.filter(user=user, Etat='en_attente').count(),
+                'rejetee': DemandeAttestation.objects.filter(user=user, Etat='rejetee').count(),
+                'validee': DemandeAttestation.objects.filter(user=user, Etat='validee').count(),
+                'total': DemandeAttestation.objects.filter(user=user).count()
+            }
+            
+            # Get counts of mission order requests by status
+            ordre_mission_stats = {
+                'en_attente': DemandeOrdreMission.objects.filter(user=user, Etat='en_attente').count(),
+                'rejetee': DemandeOrdreMission.objects.filter(user=user, Etat='rejetee').count(),
+                'validee': DemandeOrdreMission.objects.filter(user=user, Etat='validee').count(),
+                'total': DemandeOrdreMission.objects.filter(user=user).count()
+            }
+            
+            # Add statistics to response data
+            response_data['statistics'] = {
+                'attestations': attestation_stats,
+                'ordres_mission': ordre_mission_stats
+            }
+                
+            return JsonResponse(response_data)
+            
+        except Exception as e:
+            import traceback
+            error_details = traceback.format_exc()
+            print(f"Error getting user details: {error_details}")
+            return JsonResponse({'success': False, 'error': str(e)}, status=400)
+            
+    return JsonResponse({'success': False, 'message': 'Méthode non autorisée'}, status=405)
+
+@csrf_exempt
+def generate_mission_order(request, demande_id):
+    """Generate a mission order PDF for a specific request."""
+    try:
+        # Get the mission order request
+        demande = get_object_or_404(DemandeOrdreMission, id_dem_ordre=demande_id)
+        
+        # Check if the request is approved
+        if demande.Etat != 'validee':
+            return JsonResponse({
+                'success': False, 
+                'message': 'Cette demande n\'est pas encore validée.'
+            }, status=400)
+        
+        # Get the user details
+        user = demande.user
+        
+        # Format the date in the desired style
+        today = datetime.now()
+        formatted_date = today.strftime("%Y/%m/%d")
+        
+        # Get mission order details if they exist
+        ordre_mission = None
+        try:
+            ordre_mission = OrdreMission.objects.get(dem_ordre=demande)
+        except OrdreMission.DoesNotExist:
+            # If no details exist yet, use default values
+            ordre_mission = {
+                'Moyens_transport': 'À préciser',
+                'date_depart': demande.date_debut_mission,
+                'date_retour': demande.date_fin_mission,
+                'date_delivrance': today.date(),
+                'lieu_delivrance': 'Alger',
+                'nom_respo': '',
+                'prenom_respo': ''
+            }
+        
+        # Build the absolute path to static files
+        static_base_url = request.build_absolute_uri(settings.STATIC_URL)
+        
+        # Prepare the context for the template
+        context = {
+            'nom': demande.nom_employe,
+            'poste': demande.poste,
+            'departement': demande.departement,
+            'date_debut': demande.date_debut_mission.strftime("%Y/%m/%d"),
+            'date_fin': demande.date_fin_mission.strftime("%Y/%m/%d"),
+            'moyens_transport': ordre_mission.Moyens_transport if isinstance(ordre_mission, OrdreMission) else ordre_mission['Moyens_transport'],
+            'date_depart': ordre_mission.date_depart.strftime("%Y/%m/%d") if isinstance(ordre_mission, OrdreMission) else ordre_mission['date_depart'].strftime("%Y/%m/%d"),
+            'date_retour': ordre_mission.date_retour.strftime("%Y/%m/%d") if isinstance(ordre_mission, OrdreMission) else ordre_mission['date_retour'].strftime("%Y/%m/%d"),
+            'date_delivrance': ordre_mission.date_delivrance.strftime("%Y/%m/%d") if isinstance(ordre_mission, OrdreMission) else ordre_mission['date_delivrance'].strftime("%Y/%m/%d"),
+            'lieu_delivrance': ordre_mission.lieu_delivrance if isinstance(ordre_mission, OrdreMission) else ordre_mission['lieu_delivrance'],
+            'nom_responsable': ordre_mission.nom_respo if isinstance(ordre_mission, OrdreMission) else ordre_mission['nom_respo'],
+            'prenom_responsable': ordre_mission.prenom_respo if isinstance(ordre_mission, OrdreMission) else ordre_mission['prenom_respo'],
+            'piece_identite': demande.piece_identite,
+            'ref_number': f"م م/أ م/{today.year}/{demande_id}",
+            'static_url': static_base_url,
+        }
+        
+        # Render the HTML template with context
+        html_string = render_to_string('rh/mission_order_template.html', context)
+        
+        # Set base URL for WeasyPrint to properly resolve static files
+        base_url = request.build_absolute_uri('/')
+        
+        # Create the PDF file
+        pdf_file = io.BytesIO()
+        HTML(string=html_string, base_url=base_url).write_pdf(pdf_file)
+        pdf_file.seek(0)
+        
+        # Update the request with the generated PDF
+        filename = f"ordre_mission_{demande.nom_employe}.pdf"
+        if demande.Piece_jointe:
+            demande.Piece_jointe.delete()  # Remove old file if it exists
+        demande.Piece_jointe.save(filename, pdf_file)
+        demande.save()
+        
+        # Create a fresh copy for downloading
+        pdf_file.seek(0)
+        
+        # Return the PDF as download
+        response = HttpResponse(pdf_file, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        
+        return response
+        
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"Error generating PDF: {error_details}")
+        return JsonResponse({'success': False, 'error': str(e), 'details': error_details}, status=500)
+
+@csrf_exempt
+def update_mission_order_details(request, demande_id):
+    """Update or create mission order details for a request."""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            demande = get_object_or_404(DemandeOrdreMission, id_dem_ordre=demande_id)
+            
+            # Update status if provided
+            if 'status' in data:
+                new_status = data.get('status')
+                if new_status in ['en_attente', 'rejetee', 'validee']:
+                    demande.Etat = new_status
+                    demande.save()
+            
+            # Update or create mission order details
+            ordre_mission, created = OrdreMission.objects.get_or_create(
+                dem_ordre=demande,
+                defaults={
+                    'Moyens_transport': data.get('moyens_transport', ''),
+                    'date_depart': datetime.strptime(data.get('date_depart', demande.date_debut_mission.strftime('%Y-%m-%d')), '%Y-%m-%d').date(),
+                    'date_retour': datetime.strptime(data.get('date_retour', demande.date_fin_mission.strftime('%Y-%m-%d')), '%Y-%m-%d').date(),
+                    'date_delivrance': datetime.strptime(data.get('date_delivrance', datetime.now().strftime('%Y-%m-%d')), '%Y-%m-%d').date(),
+                    'lieu_delivrance': data.get('lieu_delivrance', 'Alger'),
+                    'nom_respo': data.get('nom_responsable', ''),
+                    'prenom_respo': data.get('prenom_responsable', ''),
+                }
+            )
+            
+            # If record already existed, update it
+            if not created:
+                ordre_mission.Moyens_transport = data.get('moyens_transport', ordre_mission.Moyens_transport)
+                ordre_mission.date_depart = datetime.strptime(data.get('date_depart', ordre_mission.date_depart.strftime('%Y-%m-%d')), '%Y-%m-%d').date()
+                ordre_mission.date_retour = datetime.strptime(data.get('date_retour', ordre_mission.date_retour.strftime('%Y-%m-%d')), '%Y-%m-%d').date()
+                ordre_mission.date_delivrance = datetime.strptime(data.get('date_delivrance', ordre_mission.date_delivrance.strftime('%Y-%m-%d')), '%Y-%m-%d').date()
+                ordre_mission.lieu_delivrance = data.get('lieu_delivrance', ordre_mission.lieu_delivrance)
+                ordre_mission.nom_respo = data.get('nom_responsable', ordre_mission.nom_respo)
+                ordre_mission.prenom_respo = data.get('prenom_responsable', ordre_mission.prenom_respo)
+                ordre_mission.save()
+            
+            return JsonResponse({
+                'success': True, 
+                'message': 'Détails de l\'ordre de mission mis à jour avec succès',
+                'ordre_id': ordre_mission.id_ordre_mission
+            })
+            
+        except Exception as e:
+            import traceback
+            error_details = traceback.format_exc()
+            print(f"Error updating mission order details: {error_details}")
+            return JsonResponse({'success': False, 'error': str(e), 'details': error_details}, status=400)
+            
+    return JsonResponse({'success': False, 'message': 'Méthode non autorisée'}, status=405)
+
+@csrf_exempt
+def get_mission_order_details(request, demande_id):
+    """Get the details of a mission order."""
+    if request.method == 'GET':
+        try:
+            demande = get_object_or_404(DemandeOrdreMission, id_dem_ordre=demande_id)
+            
+            # Base response with request details
+            response_data = {
+                'success': True,
+                'demande': {
+                    'id': demande.id_dem_ordre,
+                    'nom_employe': demande.nom_employe,
+                    'poste': demande.poste,
+                    'departement': demande.departement,
+                    'date_debut_mission': demande.date_debut_mission.strftime('%Y-%m-%d'),
+                    'date_fin_mission': demande.date_fin_mission.strftime('%Y-%m-%d'),
+                    'piece_identite': demande.piece_identite,
+                    'etat': demande.Etat,
+                    'message': demande.Message_ordre,
+                }
+            }
+            
+            # Add mission order details if they exist
+            try:
+                ordre_mission = OrdreMission.objects.get(dem_ordre=demande)
+                response_data['ordre_mission'] = {
+                    'id': ordre_mission.id_ordre_mission,
+                    'moyens_transport': ordre_mission.Moyens_transport,
+                    'date_depart': ordre_mission.date_depart.strftime('%Y-%m-%d'),
+                    'date_retour': ordre_mission.date_retour.strftime('%Y-%m-%d'),
+                    'date_delivrance': ordre_mission.date_delivrance.strftime('%Y-%m-%d'),
+                    'lieu_delivrance': ordre_mission.lieu_delivrance,
+                    'nom_responsable': ordre_mission.nom_respo,
+                    'prenom_responsable': ordre_mission.prenom_respo,
+                }
+            except OrdreMission.DoesNotExist:
+                response_data['ordre_mission'] = None
+                
+            return JsonResponse(response_data)
+            
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)}, status=400)
+            
+    return JsonResponse({'success': False, 'message': 'Méthode non autorisée'}, status=405)
+
+@csrf_exempt
+def update_demande_ordre_mission_status(request, demande_id):
+    """Update the status of a mission order request."""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            new_status = data.get('status')
+            
+            if new_status not in ['en_attente', 'rejetee', 'validee']:
+                return JsonResponse({'success': False, 'message': 'Statut invalide'}, status=400)
+                
+            demande = get_object_or_404(DemandeOrdreMission, id_dem_ordre=demande_id)
+            demande.Etat = new_status
+            demande.save()
+            
+            return JsonResponse({
+                'success': True, 
+                'message': 'Statut mis à jour avec succès',
+                'new_status': new_status
+            })
+            
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)}, status=400)
+            
+    return JsonResponse({'success': False, 'message': 'Méthode non autorisée'}, status=405)
+
+@csrf_exempt
+def get_user_demandes_ordre_mission(request, user_id):
+    """Get all mission order requests for a specific user."""
+    if request.method == 'GET':
+        try:
+            user = get_object_or_404(User, email=user_id)
+            demandes = DemandeOrdreMission.objects.filter(user=user).values(
+                'id_dem_ordre', 'nom_employe', 'poste', 'departement', 
+                'date_debut_mission', 'date_fin_mission', 'Message_ordre', 
+                'Etat', 'Date', 'Piece_jointe'
+            )
+            
+            # Add mission order details if they exist
+            response_data = list(demandes)
+            for demande in response_data:
+                try:
+                    ordre_mission = OrdreMission.objects.get(dem_ordre_id=demande['id_dem_ordre'])
+                    demande['ordre_mission'] = {
+                        'id': ordre_mission.id_ordre_mission,
+                        'moyens_transport': ordre_mission.Moyens_transport,
+                        'date_depart': ordre_mission.date_depart.strftime('%Y-%m-%d'),
+                        'date_retour': ordre_mission.date_retour.strftime('%Y-%m-%d'),
+                        'date_delivrance': ordre_mission.date_delivrance.strftime('%Y-%m-%d'),
+                        'lieu_delivrance': ordre_mission.lieu_delivrance,
+                        'nom_responsable': ordre_mission.nom_respo,
+                        'prenom_responsable': ordre_mission.prenom_respo,
+                    }
+                except OrdreMission.DoesNotExist:
+                    demande['ordre_mission'] = None
+            
+            return JsonResponse({'success': True, 'demandes': response_data})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)}, status=400)
+    return JsonResponse({'success': False, 'message': 'Méthode non autorisée'}, status=405)
+
+@csrf_exempt
+def bulk_update_demandes_ordre_mission(request):
+    """Update multiple mission order requests at once."""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            demande_ids = data.get('demande_ids', [])
+            new_status = data.get('status')
+            
+            if not demande_ids:
+                return JsonResponse({'success': False, 'message': 'Aucune demande spécifiée'}, status=400)
+                
+            if new_status not in ['en_attente', 'rejetee', 'validee']:
+                return JsonResponse({'success': False, 'message': 'Statut invalide'}, status=400)
+                
+            # Update all the specified requests
+            DemandeOrdreMission.objects.filter(id_dem_ordre__in=demande_ids).update(Etat=new_status)
+            
+            return JsonResponse({
+                'success': True, 
+                'message': f'{len(demande_ids)} demandes mises à jour avec succès',
+                'updated_ids': demande_ids,
+                'new_status': new_status
+            })
+            
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)}, status=400)
+            
+    return JsonResponse({'success': False, 'message': 'Méthode non autorisée'}, status=405)
+
+
+@csrf_exempt
+def delete_mission_order(request, demande_id):
+    """Delete a mission order and its associated data."""
+    if request.method == 'DELETE':
+        try:
+            # Get the mission order request
+            demande = get_object_or_404(DemandeOrdreMission, id_dem_ordre=demande_id)
+            
+            # Delete associated OrdreMission if it exists
+            try:
+                ordre_mission = OrdreMission.objects.get(dem_ordre=demande)
+                ordre_mission.delete()
+            except OrdreMission.DoesNotExist:
+                pass  # No associated OrdreMission to delete
+            
+            # Delete the attached file if it exists
+            if demande.Piece_jointe:
+                demande.Piece_jointe.delete()
+            
+            # Finally, delete the DemandeOrdreMission itself
+            demande.delete()
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Mission order and all associated data deleted successfully'
+            })
+            
+        except Exception as e:
+            import traceback
+            error_details = traceback.format_exc()
+            print(f"Error deleting mission order: {error_details}")
+            return JsonResponse({
+                'success': False,
+                'error': str(e),
+                'details': error_details
+            }, status=500)
+    
+    return JsonResponse({
+        'success': False,
+        'message': 'Method not allowed'
+    }, status=405)

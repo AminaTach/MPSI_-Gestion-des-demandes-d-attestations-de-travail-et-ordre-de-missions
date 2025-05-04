@@ -1,57 +1,188 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import html2pdf from "html2pdf.js";
 import { CloudDownload, Save } from "lucide-react";
 import { gapi } from "gapi-script";
-import { useEffect } from "react";
+import axios from "axios";
+import { useParams } from "react-router-dom";
 
 export default function ViewAttes() {
-  const [missionOrders, setMissionOrders] = useState([
-    {
-      id: "01",
-      demandeur: "Laouar Boutheyna",
-      date: "25/03/2025",
-      message: "Pour un prêt bancaire",
-      etat: "En attente",
-    },
-  ]);
+  const { id } = useParams(); // Get the attestation ID from the URL
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  // State for the attestation request details
+  const [attestationRequest, setAttestationRequest] = useState({
+    id: "",
+    demandeur: "",
+    date: "",
+    message: "",
+    etat: "",
+  });
 
+  // State for the certificate data
   const [certificateData, setCertificateData] = useState({
     title: "شـهـادة عـمـل",
     reference: "ن م م/م و ع إ آ/2025",
-    date: new Date().toLocaleDateString("fr-DZ"), // 👈 Date d’aujourd’hui
+    date: new Date().toLocaleDateString("fr-DZ"),
     location: "وادي السمار",
     intro:
       "نحن الّموقع أدناه مدير المدرسة الوطنية العليا للإعلام الآلي بوادي السمار، نشهد بأن:",
-    fullName: "دحماني فوضيل",
-    birthDate: "19-07-1957",
-    rank: "أستاذ مساعد قسم-أ",
-    startDate: "02-01-1982",
-    position: "أستاذ باحث",
+    fullName: "",
+    birthDate: "",
+    rank: "",
+    startDate: "",
+    position: "",
     conclusion:
       "تــســلــّم هــــذه الــــشـــهـــادة لﻺســـتـــظـــهـــار بـــــها عـنـد اﻹقـتـضـاء.",
   });
 
-  const [searchQuery, setSearchQuery] = useState("");
+  // Fetch attestation data when component mounts
+  useEffect(() => {
+    const fetchAttestationData = async () => {
+      try {
+        setIsLoading(true);
+        
+        // First get attestation details from the correct endpoint
+        const attestResponse = await axios.get(`http://localhost:8000/api/attestations/${id}/details/`);
+        
+        if (attestResponse.data.success) {
+          const attestData = attestResponse.data.demande;
+          const userData = attestResponse.data.user;
+          
+          setAttestationRequest({
+            id: attestData.id,
+            demandeur: userData.username || 'Non spécifié',
+            date: attestData.date,
+            message: attestData.message,
+            etat: attestData.etat,
+          });
+          
+          // Update certificate data with user information
+          setCertificateData(prevData => ({
+            ...prevData,
+            fullName: userData.nom_arabe + " " + userData.prenom_arabe,
+            birthDate: userData.dateNais, // Format if needed
+            rank: userData.Grade || "أستاذ مساعد قسم-أ", // Default if not available
+            startDate: userData.Date1erEmbauche || "02-01-1982", // Default if not available
+            position: userData.Stu_Adm || "أستاذ باحث", // Default if not available
+            reference: `ن م م/م و ع إ آ/${new Date().getFullYear()}/${attestData.id}`
+          }));
+        } else {
+          // If first endpoint fails, try the alternative endpoint
+          const allAttestResponse = await axios.get(`http://localhost:8000/api/demande-attestation/all/`);
+          
+          if (allAttestResponse.data.success) {
+            const allAttestations = allAttestResponse.data.attestations;
+            const attestData = allAttestations.find(attest => attest.id_dem_attest == id);
+            
+            if (!attestData) {
+              setError(`No attestation found with ID ${id}`);
+              setIsLoading(false);
+              return;
+            }
+            
+            setAttestationRequest({
+              id: attestData.id_dem_attest,
+              demandeur: attestData.user__username || 'Non spécifié',
+              date: attestData.Date,
+              message: attestData.Message_dem_attest,
+              etat: attestData.Etat,
+            });
+            
+            // Try to get user details if we have user_id
+            if (attestData.user_id) {
+              try {
+                const userResponse = await axios.get(`http://localhost:8000/api/users/${attestData.user_id}/`);
+                
+                if (userResponse.data.success) {
+                  const userData = userResponse.data.user;
+                  
+                  // Update certificate data with user information
+                  setCertificateData(prevData => ({
+                    ...prevData,
+                    fullName: userData.nom_arabe + " " + userData.prenom_arabe,
+                    birthDate: userData.dateNais, // Format if needed
+                    rank: userData.Grade || "أستاذ مساعد قسم-أ", // Default if not available
+                    startDate: userData.Date1erEmbauche || "02-01-1982", // Default if not available
+                    position: userData.Stu_Adm || "أستاذ باحث", // Default if not available
+                    reference: `ن م م/م و ع إ آ/${new Date().getFullYear()}/${attestData.id_dem_attest}`
+                  }));
+                }
+              } catch (userError) {
+                console.error("Could not fetch user details:", userError);
+                // Use default values if user fetch fails
+                setCertificateData(prevData => ({
+                  ...prevData,
+                  fullName: attestData.user_name || "اسم المستخدم غير متوفر",
+                  reference: `ن م م/م و ع إ آ/${new Date().getFullYear()}/${attestData.id_dem_attest}`
+                }));
+              }
+            }
+          } else {
+            throw new Error("Failed to load attestation data");
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching attestation data:", error);
+        setError("An error occurred while fetching data. Please try again later.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (id) {
+      fetchAttestationData();
+    }
+  }, [id]);
 
   const getStatusClass = (etat) => {
-    switch (etat) {
-      case "En attente":
+    const normalizedStatus = normalizeStatus(etat);
+    
+    switch (normalizedStatus) {
+      case "en_attente":
         return "text-yellow-500";
-      case "Validée":
+      case "validee":
         return "text-green-500";
-      case "Rejetée":
+      case "rejetee":
         return "text-red-500";
       default:
         return "text-gray-500";
     }
   };
+  
+  const normalizeStatus = (status) => {
+    if (!status) return '';
+    
+    // Convert to lowercase and remove accents
+    const normalized = status.toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim();
+      
+    // Map to the exact values from the model
+    if (normalized.includes('attente')) return 'en_attente';
+    if (normalized.includes('valid')) return 'validee';
+    if (normalized.includes('rejet')) return 'rejetee';
+    
+    return status; // Return original if no match
+  };
 
-  const filteredMissionOrders = missionOrders.filter(
-    (order) =>
-      order.demandeur.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      order.message.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      order.date.includes(searchQuery)
-  );
+  // Helper function to get a user-friendly display name for a status
+  const getStatusDisplay = (etat) => {
+    const normalizedStatus = normalizeStatus(etat);
+    
+    // Use the exact display values from the model's ETAT_CHOICES
+    switch (normalizedStatus) {
+      case "en_attente":
+        return "En attente";
+      case "validee":
+        return "Validée";
+      case "rejetee":
+        return "Rejetée";
+      default:
+        return etat; // Return original if not matched
+    }
+  };
 
   const handleInputChange = (field, value) => {
     setCertificateData({
@@ -67,7 +198,7 @@ export default function ViewAttes() {
     const element = pdfRef.current;
     const opt = {
       margin: 0.5,
-      filename: "attestation-travail.pdf",
+      filename: `attestation-travail-${attestationRequest.id}.pdf`,
       image: { type: "jpeg", quality: 0.98 },
       html2canvas: { scale: 2 },
       jsPDF: { unit: "in", format: "a4", orientation: "portrait" },
@@ -76,11 +207,41 @@ export default function ViewAttes() {
     html2pdf().set(opt).from(element).save();
   };
 
+  // Save changes to the server
+  const handleSaveChanges = async () => {
+    try {
+      // Use the correct endpoint to update details
+      const response = await axios.post(`http://localhost:8000/api/attestations/${id}/update-details/`, {
+        certificate_data: certificateData
+      });
+      
+      if (response.data.success) {
+        alert("Changements enregistrés avec succès");
+      } else {
+        alert("Changements enregistrés localement. L'API a retourné une erreur.");
+      }
+    } catch (error) {
+      console.error("Error saving changes:", error);
+      alert("Erreur lors de l'enregistrement des changements");
+    }
+  };
+
+  // Generate official PDF from server
+  const handleGeneratePDF = async () => {
+    try {
+      // Using the correct API endpoint for generating the work certificate
+      window.open(`http://localhost:8000/api/attestations/${id}/generate/`, '_blank');
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      alert("Erreur lors de la génération du PDF");
+    }
+  };
+
   useEffect(() => {
     function start() {
       gapi.client.init({
         clientId:
-          "964814800754-8lgiqlg6knvsd0prqghdvlntdofiac4j.apps.googleusercontent.com", // remplace ici
+          "964814800754-8lgiqlg6knvsd0prqghdvlntdofiac4j.apps.googleusercontent.com",
         scope:
           "https://www.googleapis.com/auth/documents https://www.googleapis.com/auth/drive.file",
       });
@@ -92,6 +253,12 @@ export default function ViewAttes() {
   const createGoogleDoc = async () => {
     try {
       const authInstance = gapi.auth2.getAuthInstance();
+      
+      if (!authInstance) {
+        alert("Google API n'est pas correctement initialisé. Veuillez rafraîchir la page et réessayer.");
+        return;
+      }
+      
       const user = authInstance.currentUser.get();
 
       if (!user.isSignedIn()) {
@@ -100,6 +267,11 @@ export default function ViewAttes() {
 
       const token = gapi.auth.getToken().access_token;
 
+      if (!token) {
+        alert("Impossible d'obtenir le jeton d'accès Google.");
+        return;
+      }
+
       const response = await fetch("https://docs.googleapis.com/v1/documents", {
         method: "POST",
         headers: {
@@ -107,14 +279,19 @@ export default function ViewAttes() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          title: "Certificat de travail",
+          title: `Certificat de travail - ${attestationRequest.demandeur} - ${attestationRequest.id}`,
         }),
       });
 
       const data = await response.json();
       const docId = data.documentId;
 
-      // Contenu basique à insérer dans le doc
+      if (!docId) {
+        alert("Erreur lors de la création du document. Veuillez réessayer.");
+        return;
+      }
+
+      // Contenu à insérer dans le doc
       const text = ` 
 ${certificateData.location} في، ${certificateData.date}
 المرجع: ${certificateData.reference}
@@ -177,8 +354,6 @@ ${certificateData.conclusion}
         }
       });
 
-      console.log("📤 Requêtes préparées:", requests.length);
-
       // Envoyer les requêtes
       const updateResponse = await fetch(
         `https://docs.googleapis.com/v1/documents/${docId}:batchUpdate`,
@@ -193,13 +368,41 @@ ${certificateData.conclusion}
       );
 
       const updateData = await updateResponse.json();
-
       console.log("✅ Style appliqué", updateData);
 
       // Ouvrir le document
       window.open(`https://docs.google.com/document/d/${docId}/edit`, "_blank");
     } catch (error) {
       console.error("🚨 Erreur:", error);
+      alert("Erreur lors de la création du document Google: " + error.message);
+    }
+  };
+
+  // Update the status of the attestation using the correct endpoint
+  const handleUpdateStatus = async (newStatus) => {
+    try {
+      // Use the normalized status to ensure we're always using the exact model values
+      const normalizedStatus = normalizeStatus(newStatus);
+      
+      const response = await axios.post(`http://localhost:8000/api/attestations/${id}/update-status/`, {
+        status: normalizedStatus
+      });
+
+      if (response.data.success) {
+        // Update local state with normalized status
+        setAttestationRequest({
+          ...attestationRequest,
+          etat: normalizedStatus
+        });
+        
+        // Show status change message with user-friendly format
+        alert(`Statut changé pour: ${getStatusDisplay(normalizedStatus)}`);
+      } else {
+        alert("Erreur lors de la mise à jour du statut: " + response.data.message);
+      }
+    } catch (error) {
+      console.error("Error updating status:", error);
+      alert("Erreur lors de la mise à jour du statut: " + error.message);
     }
   };
 
@@ -211,33 +414,64 @@ ${certificateData.conclusion}
       {/* Ordre de mission */}
       <div className="bg-white shadow-sm rounded-lg mb-6 p-4">
         <h2 className="text-lg font-bold mb-4">
-          Traitement de l'ordre de mission de:
+          Traitement de la demande d'attestation de:
         </h2>
         <div className="bg-blue-50 rounded-lg p-4 mb-6">
           <div className="grid grid-cols-5 gap-4">
             <div>
               <p className="text-sm font-medium text-gray-600">S/N</p>
-              <p>{filteredMissionOrders[0].id}</p>
+              <p>{attestationRequest.id}</p>
             </div>
             <div>
               <p className="text-sm font-medium text-gray-600">Demandeur</p>
-              <p>{filteredMissionOrders[0].demandeur}</p>
+              <p>{attestationRequest.demandeur}</p>
             </div>
             <div>
               <p className="text-sm font-medium text-gray-600">Date</p>
-              <p>{filteredMissionOrders[0].date}</p>
+              <p>{attestationRequest.date}</p>
             </div>
             <div>
               <p className="text-sm font-medium text-gray-600">Message</p>
-              <p>{filteredMissionOrders[0].message}</p>
+              <p>{attestationRequest.message}</p>
             </div>
             <div>
               <p className="text-sm font-medium text-gray-600">État</p>
-              <p className={getStatusClass(filteredMissionOrders[0].etat)}>
-                {filteredMissionOrders[0].etat}
+              <div>
+              <p className={getStatusClass(attestationRequest.etat)}>
+                {getStatusDisplay(attestationRequest.etat)}
               </p>
             </div>
+            </div>
           </div>
+        </div>
+        
+        {/* Status update buttons */}
+        <div className="flex justify-end gap-2 mb-4">
+          
+          {normalizeStatus(attestationRequest.etat) !== 'en_attente' && (
+            <button 
+              onClick={() => handleUpdateStatus('en_attente')}
+              className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600"
+            >
+              En attente
+            </button>
+          )}
+          {normalizeStatus(attestationRequest.etat) !== 'validee' && (
+            <button 
+            onClick={() => handleUpdateStatus('validee')}
+            className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600"
+          >
+            Valider
+          </button>
+          )}
+          {normalizeStatus(attestationRequest.etat) !== 'rejetee' && (
+            <button 
+              onClick={() => handleUpdateStatus('rejetee')}
+              className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
+            >
+              Rejeter
+            </button>
+          )}
         </div>
       </div>
 
@@ -245,20 +479,30 @@ ${certificateData.conclusion}
       <div className="bg-white shadow-sm rounded-lg mb-6 p-4 flex justify-between items-center">
         <h1 className="text-xl font-bold">Éditeur de certificat de travail</h1>
         <div className="flex items-center gap-3">
-          <button className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
+          <button 
+            onClick={handleSaveChanges}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+          >
             <Save className="h-5 w-5" />
             <span>Enregistrer</span>
           </button>
           <button
             onClick={handleDownloadPDF}
-            className="flex items-center gap-2 px-4 py-2 bg-[#0086CA] text-white border border-gray-200 rounded-lg hover:bg-gray-50"
+            className="flex items-center gap-2 px-4 py-2 bg-[#0086CA] text-white rounded-lg hover:bg-blue-600"
           >
             <CloudDownload className="h-5 w-5" />
             <span>Télécharger PDF</span>
           </button>
         </div>
       </div>
-      <div className="w-full flex justify-end mb-4">
+      <div className="w-full flex justify-between mb-4">
+        <button
+          onClick={handleGeneratePDF}
+          className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+        >
+          <CloudDownload className="h-5 w-5" />
+          <span>Générer PDF officiel</span>
+        </button>
         <div className="text-blue-500 flex items-center">
           <button
             onClick={createGoogleDoc}
