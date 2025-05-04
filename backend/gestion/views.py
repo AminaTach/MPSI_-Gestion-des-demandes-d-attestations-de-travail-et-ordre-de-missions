@@ -204,3 +204,123 @@ class RequestStatsView(APIView):
         except Exception as e:
             # Gestion des erreurs
             return Response({'error': str(e)}, status=500)
+
+
+
+
+@csrf_exempt
+def get_user_documents(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            email = data.get('email')
+            if not email:
+                return JsonResponse({'success': False, 'error': 'Email manquant'}, status=400)
+
+            try:
+                user = User.objects.get(email=email)
+            except User.DoesNotExist:
+                return JsonResponse({'success': False, 'error': 'Utilisateur non trouvé'}, status=404)
+
+            # Retrieve documents from DemandeAttestation
+            attestation_docs = DemandeAttestation.objects.filter(user=user).values(
+                'id_dem_attest', 'Piece_jointe', 'Date', 'Etat'
+            ).exclude(Piece_jointe__isnull=True).exclude(Piece_jointe='')
+
+            # Retrieve documents from DemandeOrdreMission
+            ordre_docs = DemandeOrdreMission.objects.filter(user=user).values(
+                'id_dem_ordre', 'Piece_jointe', 'Date', 'Etat', 'piece_identite', 'objet_mission'
+            ).exclude(Piece_jointe__isnull=True).exclude(Piece_jointe='')
+
+            documents = {
+                'attestations': [
+                    {
+                        'id': doc['id_dem_attest'],
+                        'type': 'Attestation de travail',
+                        'file': str(doc['Piece_jointe']) if doc['Piece_jointe'] else None,
+                        'date': doc['Date'],
+                        'status': doc['Etat']
+                    } for doc in attestation_docs
+                ],
+                'ordres': [
+                    {
+                        'id': doc['id_dem_ordre'],
+                        'type': 'Ordre de mission',
+                        'file': str(doc['Piece_jointe']) if doc['Piece_jointe'] else None,
+                        'piece_identite': str(doc['piece_identite']) if doc['piece_identite'] else None,
+                        'objet_mission': str(doc['objet_mission']) if doc['objet_mission'] else None,
+                        'date': doc['Date'],
+                        'status': doc['Etat']
+                    } for doc in ordre_docs
+                ]
+            }
+
+            return JsonResponse({'success': True, 'documents': documents})
+
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+    return JsonResponse({'success': False, 'message': 'Méthode non autorisée'}, status=405)
+
+
+@csrf_exempt
+def get_user_demands(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            email = data.get('email')
+            if not email:
+                return JsonResponse({'success': False, 'error': 'Email manquant'}, status=400)
+
+            try:
+                user = User.objects.get(email=email)
+            except User.DoesNotExist:
+                return JsonResponse({'success': False, 'error': 'Utilisateur non trouvé'}, status=404)
+
+            # Retrieve demands from DemandeAttestation
+            attestation_demands = DemandeAttestation.objects.filter(user=user).values(
+                'id_dem_attest', 'Message_dem_attest', 'Etat', 'Date', 'Piece_jointe'
+            )
+
+            # Retrieve demands from DemandeOrdreMission
+            ordre_demands = DemandeOrdreMission.objects.filter(user=user).values(
+                'id_dem_ordre', 'Message_ordre', 'Etat', 'Date', 'Piece_jointe',
+                'nom_employe', 'poste', 'departement', 'date_debut_mission', 'date_fin_mission', 'piece_identite', 'objet_mission'
+            )
+
+            demands = {
+                'attestations': [
+                    {
+                        'id': dem['id_dem_attest'],
+                        'type': 'Attestation de travail',
+                        'message': dem['Message_dem_attest'],
+                        'status': dem['Etat'],
+                        'date': dem['Date'],
+                        'piece_jointe': str(dem['Piece_jointe']) if dem['Piece_jointe'] else None
+                    } for dem in attestation_demands
+                ],
+                'ordres': [
+                    {
+                        'id': dem['id_dem_ordre'],
+                        'type': 'Ordre de mission',
+                        'message': dem['Message_ordre'],
+                        'status': dem['Etat'],
+                        'date': dem['Date'],
+                        'piece_jointe': str(dem['Piece_jointe']) if dem['Piece_jointe'] else None,
+                        'nom_employe': dem['nom_employe'],
+                        'poste': dem['poste'],
+                        'departement': dem['departement'],
+                        'date_debut_mission': dem['date_debut_mission'],
+                        'date_fin_mission': dem['date_fin_mission'],
+                        'piece_identite': str(dem['piece_identite']) if dem['piece_identite'] else None,
+                        'objet_mission': str(dem['objet_mission']) if dem['objet_mission'] else None
+                    } for dem in ordre_demands
+                ]
+            }
+
+            return JsonResponse({'success': True, 'demands': demands})
+
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+    return JsonResponse({'success': False, 'message': 'Méthode non autorisée'}, status=405)

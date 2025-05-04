@@ -16,7 +16,7 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
-from gestion.views import RequestStatsView, google_login, create_demande_attestation, create_demande_ordre_mission, get_all_demandes_attestation, get_all_demandes_ordre_mission
+from gestion.views import RequestStatsView, google_login, create_demande_attestation, create_demande_ordre_mission, get_all_demandes_attestation, get_all_demandes_ordre_mission,get_user_demands,get_user_documents
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -26,5 +26,7 @@ urlpatterns = [
     path('api/demande-ordre-mission/create/', create_demande_ordre_mission, name='create_demande_ordre_mission'),
     path('api/demande-attestation/all/', get_all_demandes_attestation, name='get_all_demandes_attestation'),
     path('api/demande-ordre-mission/all/', get_all_demandes_ordre_mission, name='get_all_demandes_ordre_mission'),
+    path('api/user/documents/', get_user_documents, name='get_user_documents'),
+    path('api/user/demands/', get_user_demands, name='get_user_demands'),
 ]
 
