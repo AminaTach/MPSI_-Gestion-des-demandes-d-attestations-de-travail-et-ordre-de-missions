@@ -4,7 +4,7 @@ import { CloudDownload, Save } from "lucide-react";
 import { gapi } from "gapi-script";
 import { useEffect } from "react";
 
-export default function WorkCertificateEditor() {
+export default function ViewAttes() {
   const [missionOrders, setMissionOrders] = useState([
     {
       id: "01",

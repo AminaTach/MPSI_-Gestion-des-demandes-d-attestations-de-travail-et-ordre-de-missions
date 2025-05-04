@@ -14,7 +14,7 @@ import dash from "../images/sidebar/dashboard.svg";
 import swich from "../images/sidebar/switch.svg";
 import attes from "../images/sidebar/attestation.svg";
 
-const Sidebar = ({ role }) => {
+const Sidebar = ({ role, setRole }) => {
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
@@ -24,8 +24,19 @@ const Sidebar = ({ role }) => {
     navigate("/");
   };
 
+  const handleSwitchRole = () => {
+    const newRole = role === "rh" ? "demandeur" : "rh";
+    setRole(newRole);
+    const userData = JSON.parse(localStorage.getItem('user'));
+    if (userData) {
+      userData.user_type = newRole;
+      localStorage.setItem('user', JSON.stringify(userData));
+    }
+    navigate("/employee/demande");
+  };
+
   const menuItems = {
-    employee: [
+    demandeur: [
       { label: "Déposer une demande", icon: Depot, path: "/employee/demande" },
       { label: "Suivi des demandes", icon: Suivi, path: "/employee/suivi" },
       {
@@ -42,7 +53,7 @@ const Sidebar = ({ role }) => {
       {
         label: "Switcher en tant que demandeur",
         icon: swich,
-        path: "/employee",
+        onClick: handleSwitchRole,
       },
     ],
   };
@@ -63,7 +74,6 @@ const Sidebar = ({ role }) => {
   const renderMenu = (isMobile = false, section = "main") => {
     const itemsToRender =
       section === "main" ? menuItems[role] || [] : footerItems;
-
     return (
       <div
         className={`flex flex-col ${

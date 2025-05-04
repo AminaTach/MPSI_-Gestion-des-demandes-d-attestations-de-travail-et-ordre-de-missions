@@ -101,7 +101,7 @@ const DeposerDemande = () => {
     setErrorMessage('');
 
     try {
-      const response = await axios.post('/api/demande-attestation/create/', {
+      const response = await axios.post('http://localhost:8000/api/demande-attestation/create/', {
         user_id: userEmail,
         message: certificateMessage
       });
@@ -129,7 +129,7 @@ const DeposerDemande = () => {
 
   if (activeSection === 'main') {
     return (
-      <div className="w-full pb-4 font-nunito sm:w-[3/4]">
+      <div className="w-full h-screen pb-4 font-nunito sm:w-[3/4]">
         <Header />
         <div className="bg-blue-50 p-4 md:p-8 min-h-screen w-full">
           <h2 className="text-2xl font-semibold text-[#0086CA] mb-8">Déposer une demande</h2>

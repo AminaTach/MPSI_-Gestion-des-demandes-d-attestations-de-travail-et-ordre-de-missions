@@ -1,52 +1,43 @@
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-
 import { Search, Eye, CloudDownload, Trash2, Filter } from "lucide-react";
+import axios from 'axios';
 
 export default function AttestationsTravail() {
-  // État pour stocker les attestations (données statiques en exemple)
-  const [attestations, setAttestations] = useState([
-    {
-      id: "01",
-      demandeur: "Laouar Boutheyna",
-      date: "25/03/2025",
-      message: "Pour un prêt bancaire",
-      etat: "En attente",
-    },
-    {
-      id: "02",
-      demandeur: "Laouar Boutheyna",
-      date: "25/03/2025",
-      message: "Pour un prêt bancaire",
-      etat: "Validée",
-    },
-    {
-      id: "03",
-      demandeur: "Laouar Boutheyna",
-      date: "25/03/2025",
-      message: "Pour un prêt bancaire",
-      etat: "En attente",
-    },
-    {
-      id: "04",
-      demandeur: "Laouar Boutheyna",
-      date: "25/03/2025",
-      message: "Pour un prêt bancaire",
-      etat: "Rejetée",
-    },
-    {
-      id: "05",
-      demandeur: "SI SABER Rania",
-      date: "23/04/2003",
-      message: "Pour un prêt bancaire",
-      etat: "Rejetée",
-    },
-  ]);
-
-  // État pour la recherche
+  const [attestations, setAttestations] = useState([]);
+  const [filteredAttestations, setFilteredAttestations] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
 
-  // Fonction pour obtenir la classe CSS correspondant à l'état
+  useEffect(() => {
+    fetchAttestations();
+  }, []);
+
+  useEffect(() => {
+    filterAttestations();
+  }, [searchQuery, attestations]);
+
+  const fetchAttestations = async () => {
+    try {
+      const response = await axios.get('http://localhost:8000/api/demande-attestation/all/');
+      setAttestations(response.data.demandes);
+      setFilteredAttestations(response.data.demandes);
+    } catch (error) {
+      console.error('Erreur lors de la récupération des attestations:', error);
+      setErrorMessage('Impossible de charger les attestations. Veuillez réessayer plus tard.');
+    }
+  };
+
+  const filterAttestations = () => {
+    const result = attestations.filter(
+      (attestation) =>
+        attestation.user__username.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        attestation.Message_dem_attest.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        attestation.Date.includes(searchQuery)
+    );
+    setFilteredAttestations(result);
+  };
+
   const getStatusClass = (etat) => {
     switch (etat) {
       case "En attente":
@@ -55,16 +46,11 @@ export default function AttestationsTravail() {
         return "text-green";
       case "Rejetée":
         return "text-red";
+      default:
+        return "text-gray-500";
     }
   };
 
-  // Filtrer les attestations selon la recherche
-  const filteredAttestations = attestations.filter(
-    (attestation) =>
-      attestation.demandeur.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      attestation.message.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      attestation.date.includes(searchQuery)
-  );
   const navigate = useNavigate();
 
   const handleView = (id) => {
@@ -107,29 +93,27 @@ export default function AttestationsTravail() {
           <div className="p-4">Demandeur</div>
           <div className="p-4">Date</div>
           <div className="p-4">Message</div>
-          <div className="p-4">Etat</div>
+          <div className="p-4">État</div>
           <div className="p-4 text-center">Modifier/Supprimer</div>
         </div>
 
         {/* Corps du tableau */}
         {filteredAttestations.map((attestation) => (
           <div
-            key={attestation.id}
+            key={attestation.id_dem_attest}
             className="grid grid-cols-6 border-b border-gray-200 hover:bg-gray-50 text-sm"
           >
-            <div className="p-4 w-16">{attestation.id}</div>
-            <div className="p-4">{attestation.demandeur}</div>
-            <div className="p-4">{attestation.date}</div>
-            <div className="p-4">{attestation.message}</div>
+            <div className="p-4 w-16">{attestation.id_dem_attest}</div>
+            <div className="p-4">{attestation.user__username}</div>
+            <div className="p-4">{attestation.Date}</div>
+            <div className="p-4">{attestation.Message_dem_attest}</div>
             <div className="p-4">
-              <span
-                className={`font-medium ${getStatusClass(attestation.etat)}`}
-              >
-                {attestation.etat}
+              <span className={`font-medium ${getStatusClass(attestation.Etat)}`}>
+                {attestation.Etat}
               </span>
             </div>
             <div className="p-4 flex items-center justify-center space-x-3">
-              <button className="text-blue-500 hover:text-blue-600">
+              <button className="text-blue-500 hover:text-blue-600" onClick={() => handleView(attestation.id_dem_attest)}>
                 <Eye className="h-5 w-5" color="#0086CA" />
               </button>
               <button className="text-blue-500 hover:text-blue-600">
@@ -142,6 +126,13 @@ export default function AttestationsTravail() {
           </div>
         ))}
       </div>
+
+      {/* Message d'erreur */}
+      {errorMessage && (
+        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-md mb-6">
+          {errorMessage}
+        </div>
+      )}
     </div>
   );
 }

@@ -16,15 +16,15 @@ const Table = ({ title, data }) => {
           </tr>
         </thead>
         <tbody>
-          {data.map((item, index) => (
-            <tr key={index} className="bg-white text-text border-b-gray-100 border-b">
-              <td className="hidden xs:flex p-2">{item.sn}</td>
-              <td className="p-2">{item.demandeur}</td>
-              <td className="p-2">{item.date}</td>
-              <td className="p-2">{item.message}</td>
+          {data.map((order, index) => (
+            <tr key={order.id_dem_ordre} className="bg-white text-text border-b-gray-100 border-b">
+              <td className="hidden xs:flex p-2">{order.id_dem_ordre}  {order.id_dem_attest}</td>
+              <td className="p-2">{order.user__username}</td>
+              <td className="p-2">{order.Date}</td>
+              <td className="p-2"> {order.Message_ordre}</td>
               <td className="p-2">
-                <span className={item.etat === 'Validée' ? 'text-green' : (item.etat === 'En attente' ? 'text-orange' : 'text-red-500')}>
-                  {item.etat}
+                <span className={order.Etat== 'Validée' ? 'text-green' : (order.Etat === 'en_attente' ? 'text-orange' : 'text-red-500')}>
+                  {order.Etat}
                 </span>
               </td>
             </tr>
