@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ordre de Mission</title>
+    <style>
+        @font-face {
+            font-family: 'Amiri';
+            src: url('{{ static_url }}fonts/Amiri-Regular.ttf') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+        }
+        @font-face {
+            font-family: 'Amiri';
+            src: url('{{ static_url }}fonts/Amiri-Bold.ttf') format('truetype');
+            font-weight: bold;
+            font-style: normal;
+        }
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 20px;
+            direction: ltr;
+        }
+        .arabic {
+            font-family: 'Amiri', serif;
+            direction: rtl;
+            text-align: right;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            border: 1px solid #000;
+            padding: 20px;
+            position: relative;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        .title {
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            margin: 20px 0;
+            display: flex;
+            justify-content: space-between;
+        }
+        .ref-number {
+            text-align: right;
+            margin-bottom: 20px;
+        }
+        .row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            align-items: center;
+        }
+        .label {
+            font-weight: bold;
+            width: 40%;
+        }
+        .value {
+            width: 55%;
+            border-bottom: 1px dotted #000;
+            padding: 3px 0;
+        }
+        .full-width {
+            width: 100%;
+        }
+        .signature {
+            margin-top: 50px;
+            text-align: right;
+        }
+        .footer {
+            margin-top: 50px;
+            border-top: 1px solid #999;
+            padding-top: 10px;
+            font-size: 10px;
+        }
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        .table th, .table td {
+            border: 1px solid #000;
+            padding: 8px;
+            text-align: center;
+        }
+        .table th {
+            background-color: #f2f2f2;
+        }
+        .notes {
+            font-size: 10px;
+            margin-top: 40px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="ref-number arabic">{{ ref_number }}</div>
+        
+        <div class="title">
+            <span>Ordre de mission</span>
+            <span class="arabic">أمر بمهمة</span>
+        </div>
+        
+        <div class="row">
+            <span class="label">Le(la) nommé(e):</span>
+            <span class="value">{{ nom }}</span>
+            <span class="label arabic">إن السيد(ة):</span>
+        </div>
+        
+        <div class="row">
+            <span class="label">Ordonne M./Mme :</span>
+            <span class="value">{{ nom }}</span>
+            <span class="label arabic">يأمر السيد(ة):</span>
+        </div>
+        
+        <div class="row">
+            <span class="label">Poste:</span>
+            <span class="value">{{ poste }}</span>
+            <span class="label arabic">المنصب:</span>
+        </div>
+        
+        <div class="row">
+            <span class="label">Département :</span>
+            <span class="value">{{ departement }}</span>
+            <span class="label arabic">التابع(ة) :</span>
+        </div>
+        
+        <div class="row">
+            <span class="label">Est chargé(e) d'effectuer une mission du</span>
+            <span class="value">{{ date_debut }}</span>
+            <span class="label">au :</span>
+            <span class="value">{{ date_fin }}</span>
+            <span class="label arabic">بالذهاب في مهمة من: إلى</span>
+        </div>
+        
+        <div class="row">
+            <span class="label">Objet de la mission :</span>
+            <span class="value full-width"></span>
+            <span class="label arabic">الموضوع الكامل للمهمة:</span>
+        </div>
+        
+        <div class="row">
+            <span class="label">Moyens de transport :</span>
+            <span class="value">{{ moyens_transport }}</span>
+            <span class="label arabic">وسائل النقل:</span>
+        </div>
+        
+        <div class="row">
+            <span class="label">Date de départ :</span>
+            <span class="value">{{ date_depart }}</span>
+            <span class="label arabic">تاريخ الذهاب:</span>
+        </div>
+        
+        <div class="row">
+            <span class="label">Date de retour :</span>
+            <span class="value">{{ date_retour }}</span>
+            <span class="label arabic">تاريخ الرجوع:</span>
+        </div>
+        
+        <div class="row">
+            <span class="arabic">يرجي من السلطات المعنية والعسكرية أن تسهل للسيد(ة): {{ nom }} في إداء مهمته(ها)</span>
+        </div>
+        
+        <div>Il est demandé aux autorités civiles et militaires de bien vouloir faciliter l'accomplissement de cette mission à {{ nom }}</div>
+        
+        <div class="row" style="margin-top: 20px;">
+            <span class="label">Pièce d'identité :</span>
+            <span class="value">{{ piece_identite }}</span>
+            <span class="label arabic">وثيقة الهوية:</span>
+        </div>
+        
+        <div class="row">
+            <div style="width: 45%;">
+                <div class="label">Le :</div>
+                <div class="value">{{ lieu_delivrance }}</div>
+            </div>
+            <div style="width: 5%;"></div>
+            <div style="width: 45%;">
+                <div class="label">Date de départ :</div>
+                <div class="value">{{ date_delivrance }}</div>
+                <div class="label arabic">المسلمة في :</div>
+            </div>
+        </div>
+        
+        <div class="signature">
+            <div class="arabic">مسؤول المصلحة الذي أصدار الأمر بالمهمة</div>
+            <div>Le responsable émettant l'ordre de mission</div>
+            <div style="height: 80px;"></div>
+            <div>{{ nom_responsable }} {{ prenom_responsable }}</div>
+        </div>
+        
+        <table class="table">
+            <tr>
+                <th colspan="10" class="arabic">خانة مخصصة للتأشيرات</th>
+            </tr>
+            <tr>
+                <td colspan="2" class="arabic">تاريخ ووقت الوصول</td>
+                <td colspan="4"></td>
+                <td colspan="2" class="arabic">تاريخ ووقت الخروج</td>
+                <td colspan="2"></td>
+            </tr>
+            <tr>
+                <td colspan="3" class="arabic">تسبيق محصل عليه عند الذهاب – حصل على مبلغ:</td>
+                <td colspan="7"></td>
+            </tr>
+            <tr>
+                <td colspan="2" class="arabic">بعنوان تسبيق تبعا لكشف الحساب رقم:</td>
+                <td colspan="3"></td>
+                <td colspan="2" class="arabic">لهذا اليوم</td>
+                <td colspan="3"></td>
+            </tr>
+            <tr>
+                <td class="arabic">بـ:</td>
+                <td colspan="3"></td>
+                <td class="arabic">في:</td>
+                <td colspan="5"></td>
+            </tr>
+            <tr>
+                <th colspan="10" class="arabic">تنفيذ التنفل</th>
+            </tr>
+            <tr>
+                <th rowspan="2" class="arabic">الوجهات</th>
+                <th colspan="9" class="arabic">التواريخ - الساعات</th>
+            </tr>
+            <tr>
+                <th colspan="2" class="arabic">الذهاب من الموقع</th>
+                <th colspan="2" class="arabic">الوصول إلى الوجهة</th>
+                <th colspan="2" class="arabic">العودة إلى الموقع</th>
+                <th colspan="2" class="arabic">الوصول إلى الموقع</th>
+                <th class="arabic">وسيلة النقل</th>
+            </tr>
+            <tr>
+                <td class="arabic">
+                    من: الجزائر<br>
+                    إلى: جامعة الأغواط
+                </td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+            </tr>
+            <tr>
+                <td class="arabic">
+                    من: .......<br>
+                    إلى: .......
+                </td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+            </tr>
+            <tr>
+                <td colspan="2" class="arabic">مجموع مدة التنقل:</td>
+                <td colspan="3"></td>
+                <td class="arabic">أيام:</td>
+                <td colspan="2"></td>
+                <td class="arabic">ساعات:</td>
+                <td></td>
+            </tr>
+            <tr>
+                <td colspan="3" class="arabic">عدد الليالي في ضيافة المصلحة المستقبلة:</td>
+                <td colspan="7"></td>
+            </tr>
+            <tr>
+                <td colspan="5" class="arabic">
+                    إن السيد/السيدة: {{ nom }} يشهد بصحة البيانات المسجلة أعلاه<br>
+                    بـ: ..................... في: .....................<br>
+                    الإمضاء
+                </td>
+                <td colspan="5" class="arabic">
+                    يثبت حقيقة الخدمة وصحة المعلومات المسجلة أعلاه<br>
+                    حرربـ: .............. في: ............................<br>
+                </td>
+            </tr>
+        </table>
+        
+        <div class="notes arabic">
+            <ol>
+                <li>: الهيئة أو المصلحة المستقبلة،</li>
+                <li>: اسم و لقب المأمور بمهمة،</li>
+                <li>: رئيس المصلحة أو الهيئة المستقبلة،</li>
+            </ol>
+            <p>(تشطب البيانات غير المفيدة)</p>
+            <p>ملاحظة: يجب على كل إدارة أو مؤسسة أو هيئة ملء الخانة المناسبة.</p>
+        </div>
+    </div>
+</body>
+</html>
