@@ -93,11 +93,11 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': config('DB_NAME'),
-        'USER': config('DB_USER'),
-        'PASSWORD': config('DB_PASSWORD'),
-        'HOST': config('DB_HOST'),
-        'PORT': config('DB_PORT'),
+        'NAME': 'mpsi_project', #nom de la base de données
+        'USER': 'postgres',  # ton nom d'utilisateur PostgreSQL
+        'PASSWORD': 'newpassword', # ton mot de passe PostgreSQL
+        'HOST': 'localhost',
+        'PORT': '5433',  
     }
 }
 
