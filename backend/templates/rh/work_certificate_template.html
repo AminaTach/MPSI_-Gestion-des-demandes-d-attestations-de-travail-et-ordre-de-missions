@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>شهادة عمل</title>
+    <style>
+        /* Use system Arabic fonts instead of loading from a file */
+        @font-face {
+            font-family: 'Amiri';
+            /* Base64 encoded font can be used here as an alternative */
+            font-weight: normal;
+            font-style: normal;
+        }
+
+        body {
+            font-family: 'Traditional Arabic', 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            direction: rtl;
+            text-align: right;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        .header h2 {
+            font-size: 18px;
+            margin-top: 0;
+        }
+
+        .reference {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 40px;
+        }
+
+        .title {
+            text-align: center;
+            font-size: 32px;
+            font-weight: bold;
+            margin: 40px 0;
+            text-decoration: underline;
+        }
+
+        .content {
+            font-size: 16px;
+            line-height: 1.6;
+            margin-bottom: 50px;
+        }
+
+        .content p {
+            margin-bottom: 20px;
+        }
+
+        .signature {
+            text-align: left;
+            margin-top: 80px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>نيابة مديرية المستخدمين</h1>
+            <h2>SOUS DIRECTION DES PERSONNELS</h2>
+        </div>
+
+        <div class="reference">
+            <div>المرجع: {{ ref_number }}</div>
+            <div>وادي السمار في، {{ current_date }}</div>
+        </div>
+
+        <div class="title">شــهــادة عـمــل</div>
+
+        <div class="content">
+            <p>نحن الموقع أدناه مدير المدرسة الوطنية العليا للإعلام الآلي بوادي السمار،</p>
+            <p>نشهد بأنّ:</p>
+
+            <p>الإسم واللقب : {{ prenom_arabe }} {{ nom_arabe }}</p>
+
+            <p>المولود في: {{ date_naissance }} بـ: {{ lieu_naissance }}</p>
+
+            <p>الرتبة : {{ grade }}</p>
+
+            <p>ينتمي إلى مؤسستنا منذ {{ date_embauche }} إلى يومنا هذا.</p>
+
+            <p>تسلّم هـذه الشـهـادة للإسـتـظهـار بها عند الإقتضاء.</p>
+        </div>
+
+        <div class="signature">
+            <p>امضاء و ختم المؤسسة</p>
+        </div>
+    </div>
+</body>
+</html>

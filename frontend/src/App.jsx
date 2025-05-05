@@ -50,7 +50,7 @@ function AppContent({ role, setRole }) {
             {/* Add other protected routes here */}
             <Route path="/rh/docs" element={<RH />} />
             <Route path="/rh/attestation" element={<AttestationsTravail />} />
-            <Route path="/ViewAttes" element={<ViewAttes />} />
+            <Route path="/ViewAttes/:id" element={<ViewAttes />} />
           </Route>
           {/* Add other public routes here */}
         </Routes>
