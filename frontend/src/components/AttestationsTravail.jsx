@@ -54,7 +54,7 @@ export default function AttestationsTravail() {
   const navigate = useNavigate();
 
   const handleView = (id) => {
-    navigate(`/attestation/${id}`);
+    navigate(`/ViewAttes`);
   };
 
   return (
