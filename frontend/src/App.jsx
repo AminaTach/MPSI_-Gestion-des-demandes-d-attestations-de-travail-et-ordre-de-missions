@@ -11,6 +11,7 @@ import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
 import "./App.css";
 import ForgotPasswordPage from "./pages/ForgetPW";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 import OrdreMissionForm from "./pages/OrdreMission/OrdreMissionForm";
 import OrdreMissionTable from "./pages/OrdreMission/OrdreMissionTable";
 import OrdreMissionDoc from "./pages/OrdreMission/OrdreMissionDoc";
@@ -25,7 +26,7 @@ import RH from './pages/RH'
 function AppContent({ role, setRole }) {
   const location = useLocation();
 
-  const hideSidebarRoutes = ["/", "/forgetpassword"];
+  const hideSidebarRoutes = ["/", "/forgetpassword","/reset-password"];
   const hideSidebar = hideSidebarRoutes.includes(location.pathname);
 
   return (
@@ -34,10 +35,8 @@ function AppContent({ role, setRole }) {
       <div className="flex-grow">
         <Routes>
           <Route path="/" element={<Login />} />
-
-
-
           <Route path="/forgetpassword" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route element={<PrivateRoute role={role} />}>
             <Route path="/rh/dashboard" element={<Dashboard />} />
             <Route path="/employee/demande" element={<DeposerDemande />} />
@@ -69,7 +68,7 @@ function App() {
     }
   }, []);
 
- 
+
 
   return (
     <GoogleOAuthProvider clientId="318367454563-v857090khdr2rk94jff2apmh0ifq7irh.apps.googleusercontent.com">
