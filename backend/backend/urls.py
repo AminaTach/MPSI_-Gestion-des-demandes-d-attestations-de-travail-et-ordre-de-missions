@@ -7,7 +7,7 @@ from gestion.views import (
     google_login, create_demande_attestation, create_demande_ordre_mission, 
     get_all_demandes_attestation, get_all_demandes_ordre_mission, get_user_demands,
     get_user_documents, update_attestation_details, update_demande_attestation_status, update_demande_ordre_mission_status, 
-    update_mission_order_details
+    update_mission_order_details, SendEmailView
 )
 
 urlpatterns = [
@@ -39,4 +39,8 @@ urlpatterns = [
     path('api/mission-orders/user/<str:user_id>/', get_user_demandes_ordre_mission, name='get_user_demandes_ordre_mission'),
     path('api/mission-orders/bulk-update/', bulk_update_demandes_ordre_mission, name='bulk_update_demandes_ordre_mission'),
     path('api/mission-orders/<int:demande_id>/delete/', delete_mission_order, name='delete_mission_order'),
+    
+    path('send-email/', SendEmailView.as_view(), name='send-email'),
+
+
 ]

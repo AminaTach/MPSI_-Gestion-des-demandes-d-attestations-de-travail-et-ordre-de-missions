@@ -23,7 +23,7 @@ const Table = ({ title, data }) => {
               <td className="p-2">{order.Date}</td>
               <td className="p-2"> {order.Message_ordre}</td>
               <td className="p-2">
-                <span className={order.Etat== 'Validée' ? 'text-green' : (order.Etat === 'en_attente' ? 'text-orange' : 'text-red-500')}>
+                <span className={order.Etat== 'validee' ? 'text-green' : (order.Etat === 'en_attente' ? 'text-orange' : 'text-red-500')}>
                   {order.Etat}
                 </span>
               </td>
