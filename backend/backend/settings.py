@@ -13,6 +13,22 @@ import os
 from pathlib import Path
 from decouple import config
 
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
+# settings.py
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'  # SMTP server for Gmail
+EMAIL_PORT = 587  # Port for TLS
+EMAIL_USE_TLS = True  # Use TLS
+EMAIL_HOST_USER = 'la_chelli@esi.dz'  # Your Gmail address
+EMAIL_HOST_PASSWORD = 'mwmo ituu ywyg wtlw'  # Your Gmail password or app-specific password
+
+
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -93,11 +109,11 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': config('DB_NAME'),
-        'USER': config('DB_USER'),
-        'PASSWORD': config('DB_PASSWORD'),
-        'HOST': config('DB_HOST'),
-        'PORT': config('DB_PORT'),
+        'NAME': 'mpsi_project', #nom de la base de données
+        'USER': 'postgres',  # ton nom d'utilisateur PostgreSQL
+        'PASSWORD': 'newpassword', # ton mot de passe PostgreSQL
+        'HOST': 'localhost',
+        'PORT': '5433',  
     }
 }
 
