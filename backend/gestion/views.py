@@ -730,6 +730,7 @@ def generate_mission_order(request, demande_id):
             'nom_responsable': ordre_mission.nom_respo if isinstance(ordre_mission, OrdreMission) else ordre_mission['nom_respo'],
             'prenom_responsable': ordre_mission.prenom_respo if isinstance(ordre_mission, OrdreMission) else ordre_mission['prenom_respo'],
             'piece_identite': demande.piece_identite,
+            'objet_mission': demande.objet_mission,  # Added the mission purpose
             'ref_number': f"م م/أ م/{today.year}/{demande_id}",
             'static_url': static_base_url,
         }
@@ -839,6 +840,7 @@ def get_mission_order_details(request, demande_id):
                     'date_debut_mission': demande.date_debut_mission.strftime('%Y-%m-%d'),
                     'date_fin_mission': demande.date_fin_mission.strftime('%Y-%m-%d'),
                     'piece_identite': demande.piece_identite,
+                    'objet_mission': demande.objet_mission,  # Added the mission purpose
                     'etat': demande.Etat,
                     'message': demande.Message_ordre,
                 }
@@ -898,11 +900,12 @@ def get_user_demandes_ordre_mission(request, user_id):
     """Get all mission order requests for a specific user."""
     if request.method == 'GET':
         try:
-            user = get_object_or_404(User, email=user_id)
+            # Changed from email to username based on your model structure
+            user = get_object_or_404(User, username=user_id)
             demandes = DemandeOrdreMission.objects.filter(user=user).values(
                 'id_dem_ordre', 'nom_employe', 'poste', 'departement', 
                 'date_debut_mission', 'date_fin_mission', 'Message_ordre', 
-                'Etat', 'Date', 'Piece_jointe'
+                'objet_mission', 'Etat', 'Date', 'Piece_jointe', 'piece_identite'
             )
             
             # Add mission order details if they exist
@@ -938,18 +941,18 @@ def bulk_update_demandes_ordre_mission(request):
             new_status = data.get('status')
             
             if not demande_ids:
-                return JsonResponse({'success': False, 'message': 'Aucune demande spécifiée'}, status=400)
+                return JsonResponse({'success': False, 'message': 'Aucune demande sélectionnée'}, status=400)
                 
             if new_status not in ['en_attente', 'rejetee', 'validee']:
                 return JsonResponse({'success': False, 'message': 'Statut invalide'}, status=400)
-                
-            # Update all the specified requests
+            
+            # Update all selected requests
             DemandeOrdreMission.objects.filter(id_dem_ordre__in=demande_ids).update(Etat=new_status)
             
             return JsonResponse({
                 'success': True, 
                 'message': f'{len(demande_ids)} demandes mises à jour avec succès',
-                'updated_ids': demande_ids,
+                'updated_count': len(demande_ids),
                 'new_status': new_status
             })
             
@@ -958,48 +961,38 @@ def bulk_update_demandes_ordre_mission(request):
             
     return JsonResponse({'success': False, 'message': 'Méthode non autorisée'}, status=405)
 
-
 @csrf_exempt
 def delete_mission_order(request, demande_id):
-    """Delete a mission order and its associated data."""
-    if request.method == 'DELETE':
+    """Delete a mission order request."""
+    if request.method == 'POST':
         try:
-            # Get the mission order request
             demande = get_object_or_404(DemandeOrdreMission, id_dem_ordre=demande_id)
             
-            # Delete associated OrdreMission if it exists
+            # First delete related mission order if it exists
             try:
                 ordre_mission = OrdreMission.objects.get(dem_ordre=demande)
                 ordre_mission.delete()
             except OrdreMission.DoesNotExist:
-                pass  # No associated OrdreMission to delete
+                pass
             
-            # Delete the attached file if it exists
+            # Delete attached file if exists
             if demande.Piece_jointe:
                 demande.Piece_jointe.delete()
             
-            # Finally, delete the DemandeOrdreMission itself
+            # Delete the request
+            demande_nom = demande.nom_employe
             demande.delete()
             
             return JsonResponse({
-                'success': True,
-                'message': 'Mission order and all associated data deleted successfully'
+                'success': True, 
+                'message': f'Demande d\'ordre de mission de {demande_nom} supprimée avec succès'
             })
             
         except Exception as e:
-            import traceback
-            error_details = traceback.format_exc()
-            print(f"Error deleting mission order: {error_details}")
-            return JsonResponse({
-                'success': False,
-                'error': str(e),
-                'details': error_details
-            }, status=500)
-    
-    return JsonResponse({
-        'success': False,
-        'message': 'Method not allowed'
-    }, status=405)
+            return JsonResponse({'success': False, 'error': str(e)}, status=400)
+            
+    return JsonResponse({'success': False, 'message': 'Méthode non autorisée'}, status=405)    
+
     
     # views.py
 from rest_framework.views import APIView

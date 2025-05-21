@@ -32,6 +32,7 @@ urlpatterns = [
     # Ordre de mission endpoints
     path('api/demande-ordre-mission/create/', create_demande_ordre_mission, name='create_demande_ordre_mission'),
     path('api/demande-ordre-mission/all/', get_all_demandes_ordre_mission, name='get_all_demandes_ordre_mission'),
+    # Fix these URL patterns in your urls.py
     path('api/mission-orders/<int:demande_id>/generate/', generate_mission_order, name='generate_mission_order'),
     path('api/mission-orders/<int:demande_id>/update-details/', update_mission_order_details, name='update_mission_order_details'),
     path('api/mission-orders/<int:demande_id>/details/', get_mission_order_details, name='get_mission_order_details'),
