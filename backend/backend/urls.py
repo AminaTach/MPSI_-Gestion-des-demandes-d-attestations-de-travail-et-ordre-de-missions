@@ -1,5 +1,7 @@
 from django.contrib import admin
 from django.urls import path, include
+from django.conf import settings
+from gestion import views
 from gestion.views import (
     RequestStatsView, bulk_update_demandes_attestation, bulk_update_demandes_ordre_mission, 
     delete_demande_attestation, delete_mission_order, generate_mission_order, generate_work_certificate, get_attestation_details, 
@@ -11,7 +13,18 @@ from gestion.views import (
 )
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    
+    # Page d'accueil (redirection vers login)
+    path('', lambda request: views.login(request), name='home'),
+
+    # Routes API pour tests ThunderClient
+    path('api/register/', views.api_register, name='api_register'),
+    path('api/login/', views.api_login, name='api_login'),
+    path('api/forgot-password/', views.api_forgot_password, name='api_forgot_password'),
+    path('api/reset-password/', views.api_reset_password, name='api_reset_password'),
+    path('api/switch-role/', views.api_switch_role, name='api_switch_role'),
+    path('api/update-profile/', views.api_update_profile, name='api_update_profile'),
+    path('api/get-user/', views.api_get_user, name='api_get_user'),
     path('api/stats/', RequestStatsView.as_view(), name='api_request_stats'),
     path("api/google-login/", google_login, name="google_login"),
     path('api/user/documents/', get_user_documents, name='get_user_documents'),
@@ -44,3 +57,6 @@ urlpatterns = [
 
 
 ]
+# Ajouter les patterns pour servir les fichiers média en développement
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
