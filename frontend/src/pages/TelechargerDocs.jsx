@@ -67,7 +67,7 @@ const TelechargerDocuments = () => {
     if (activeFilters.date) {
       const today = new Date();
 
-      switch(activeFilters.date) {
+      switch (activeFilters.date) {
         case 'today':
           result = result.filter(item => {
             const date = new Date(item.date);
@@ -116,10 +116,74 @@ const TelechargerDocuments = () => {
   };
 
   // Télécharger un document
-  const downloadDocument = (document) => {
-    // Implémenter la logique de téléchargement ici
-    console.log(`Téléchargement du document: ${document.id}`);
-    // Exemple: window.open(`/api/documents/download/${document.id}`, '_blank');
+  // Fonction pour télécharger un ordre de mission
+  const downloadDocument = async (orderId) => {
+    try {
+      setIsLoading(true);
+      const response = await axios.get(
+        `http://localhost:8000/api/mission-orders/${orderId}/generate/`,
+        { responseType: 'blob' }
+      );
+
+      // Créer un URL pour le blob et déclencher le téléchargement
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `ordre_mission_${orderId}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error('Erreur lors du téléchargement du document:', error);
+      alert('Erreur lors du téléchargement. Veuillez réessayer.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Fonction pour télécharger une attestation de travail
+  const handleDownload = async (id) => {
+    setIsLoading(true);
+    try {
+      console.log(`Attempting to download attestation ${id}`);
+
+      // Make a request to generate and download the PDF
+      const response = await axios.get(`http://localhost:8000/api/attestations/${id}/generate/`, {
+        responseType: 'blob', // Important for file downloads
+      });
+
+      console.log('Download response received', response.status);
+
+      // Create a blob URL for the PDF
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+
+      // Create a temporary link element and trigger download
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `attestation_travail_${id}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+
+      // Clean up
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(link);
+
+      setSuccessMessage("Attestation téléchargée avec succès");
+      setTimeout(() => setSuccessMessage(""), 3000);
+    } catch (error) {
+      console.error('Erreur lors du téléchargement:', error);
+      console.error('Error details:', error.response || error.message);
+
+      if (error.response?.status === 400) {
+        setErrorMessage('Cette attestation n\'est pas encore validée.');
+      } else {
+        setErrorMessage(`Erreur lors du téléchargement de l'attestation: ${error.message}`);
+      }
+      setTimeout(() => setErrorMessage(""), 5000);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Formater la date pour l'affichage
@@ -188,7 +252,7 @@ const TelechargerDocuments = () => {
                         const newTypes = e.target.checked
                           ? [...activeFilters.type, 'Attestation de travail']
                           : activeFilters.type.filter(t => t !== 'Attestation de travail');
-                        setActiveFilters({...activeFilters, type: newTypes});
+                        setActiveFilters({ ...activeFilters, type: newTypes });
                       }}
                     />
                     <label htmlFor="typeAttestation">Attestation de travail</label>
@@ -203,7 +267,7 @@ const TelechargerDocuments = () => {
                         const newTypes = e.target.checked
                           ? [...activeFilters.type, 'Ordre de mission']
                           : activeFilters.type.filter(t => t !== 'Ordre de mission');
-                        setActiveFilters({...activeFilters, type: newTypes});
+                        setActiveFilters({ ...activeFilters, type: newTypes });
                       }}
                     />
                     <label htmlFor="typeMission">Ordre de mission</label>
@@ -219,7 +283,7 @@ const TelechargerDocuments = () => {
                       name="dateFilter"
                       className="mr-2"
                       checked={activeFilters.date === 'today'}
-                      onChange={() => setActiveFilters({...activeFilters, date: 'today'})}
+                      onChange={() => setActiveFilters({ ...activeFilters, date: 'today' })}
                     />
                     <label htmlFor="dateToday">Aujourd'hui</label>
                   </div>
@@ -230,7 +294,7 @@ const TelechargerDocuments = () => {
                       name="dateFilter"
                       className="mr-2"
                       checked={activeFilters.date === 'week'}
-                      onChange={() => setActiveFilters({...activeFilters, date: 'week'})}
+                      onChange={() => setActiveFilters({ ...activeFilters, date: 'week' })}
                     />
                     <label htmlFor="dateWeek">Cette semaine</label>
                   </div>
@@ -241,7 +305,7 @@ const TelechargerDocuments = () => {
                       name="dateFilter"
                       className="mr-2"
                       checked={activeFilters.date === 'month'}
-                      onChange={() => setActiveFilters({...activeFilters, date: 'month'})}
+                      onChange={() => setActiveFilters({ ...activeFilters, date: 'month' })}
                     />
                     <label htmlFor="dateMonth">Ce mois</label>
                   </div>
@@ -252,7 +316,7 @@ const TelechargerDocuments = () => {
                       name="dateFilter"
                       className="mr-2"
                       checked={activeFilters.date === null}
-                      onChange={() => setActiveFilters({...activeFilters, date: null})}
+                      onChange={() => setActiveFilters({ ...activeFilters, date: null })}
                     />
                     <label htmlFor="dateAll">Toutes les dates</label>
                   </div>
@@ -336,11 +400,15 @@ const TelechargerDocuments = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <button
-                        onClick={() => downloadDocument(document)}
-                        className="text-red-500 hover:text-red-700"
-                      >
+                        onClick={() => {
+                          if (document.type === 'Ordre de mission') {
+                            downloadDocument(document.id);
+                          } else if (document.type === 'Attestation de travail') {
+                            handleDownload(document.id);
+                          }
+                        }}>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-red-500">
-                          <path d="M12 2v13m0 0l-3-3m3 3l3-3M3 17v5h18v-5"/>
+                          <path d="M12 2v13m0 0l-3-3m3 3l3-3M3 17v5h18v-5" />
                         </svg>
                       </button>
                     </td>
@@ -351,7 +419,7 @@ const TelechargerDocuments = () => {
           </table>
         </div>
       </div>
-    </div>
+    </div >
   );
 };
 
