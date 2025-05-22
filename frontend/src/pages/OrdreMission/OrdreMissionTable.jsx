@@ -47,8 +47,6 @@ const OrdreMissionTable = () => {
       );
     }
 
-  
-
     // Apply status filter
     if (activeFilters.status.length > 0) {
       results = results.filter(order =>
@@ -85,16 +83,78 @@ const OrdreMissionTable = () => {
     });
   };
 
-  const getStatusColor = (etat) => {
-    switch (etat) {
+  const getStatusBadge = (etat) => {
+    switch (etat.toLowerCase()) {
       case "en_attente":
-        return "text-yellow-500";
+        return (
+          <span className="px-2 py-1 rounded-full bg-yellow-100 text-yellow-800 text-xs font-medium">
+            En attente
+          </span>
+        );
+      case "validée":
       case "validee":
-        return "text-green";
+        return (
+          <span className="px-2 py-1 rounded-full bg-green-100 text-green-800 text-xs font-medium">
+            Validée
+          </span>
+        );
+      case "rejetée":
       case "rejetee":
-        return "text-red";
+        return (
+          <span className="px-2 py-1 rounded-full bg-red-100 text-red-800 text-xs font-medium">
+            Rejetée
+          </span>
+        );
       default:
-        return "text-gray";
+        return (
+          <span className="px-2 py-1 rounded-full bg-gray-100 text-gray-800 text-xs font-medium">
+            {etat}
+          </span>
+        );
+    }
+  };
+
+  // Fonction pour télécharger un ordre de mission
+  const downloadMissionOrder = async (orderId) => {
+    try {
+      setIsLoading(true);
+      const response = await axios.get(
+        `http://localhost:8000/api/mission-orders/${orderId}/generate/`, 
+        { responseType: 'blob' }
+      );
+      
+      // Créer un URL pour le blob et déclencher le téléchargement
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `ordre_mission_${orderId}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error('Erreur lors du téléchargement du document:', error);
+      alert('Erreur lors du téléchargement. Veuillez réessayer.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Fonction pour supprimer un ordre de mission
+  const deleteMissionOrder = async (orderId) => {
+    if (window.confirm('Êtes-vous sûr de vouloir supprimer cette demande d\'ordre de mission ?')) {
+      try {
+        setIsLoading(true);
+        await axios.post(`http://localhost:8000/api/mission-orders/${orderId}/delete/`);
+        
+        // Mettre à jour la liste après suppression
+        setOrders(orders.filter(order => order.id_dem_ordre !== orderId));
+        alert('Demande d\'ordre de mission supprimée avec succès.');
+      } catch (error) {
+        console.error('Erreur lors de la suppression:', error);
+        alert('Erreur lors de la suppression. Veuillez réessayer.');
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -136,7 +196,6 @@ const OrdreMissionTable = () => {
             {filterOpen && (
               <div className="absolute right-0 mt-2 w-64 bg-white rounded-md shadow-lg z-10 p-4">
                
-
                 <h3 className="font-medium mb-3">Statut</h3>
                 <div className="space-y-2 mb-4">
                   <div className="flex items-center">
@@ -253,48 +312,72 @@ const OrdreMissionTable = () => {
           </div>
         </div>
 
-        <div className="overflow-auto">
-          <table className="w-full overflow-x-auto text-sm text-left">
-            <thead>
-              <tr className="text-gray-600 border-b">
-                <th className="px-4 py-2">S/N</th>
-                <th className="px-4 py-2">Demandeur</th>
-                <th className="px-4 py-2">Date</th>
-                <th className="px-4 py-2">Message</th>
-                <th className="px-4 py-2">Etat</th>
-                <th className="px-4 py-2">Modifier/Supprimer</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredOrders.map((order) => (
-                <tr
-                  key={order.id_dem_ordre}
-                  className="border-b hover:bg-gray-50 cursor-pointer"
-                >
-                  <td className="px-4 py-3">{order.id_dem_ordre}</td>
-                  <td className="px-4 py-3">{order.user__username}</td>
-                  <td className="px-4 py-3">{order.Date}</td>
-                  <td className="px-4 py-3 max-w-xs whitespace-normal break-words">
-                    {order.Message_ordre}
-                  </td>
-                  <td
-                    className={`px-4 py-3 font-medium ${getStatusColor(order.Etat)}`}
+        {/* Tableau des ordres de mission */}
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          {/* En-tête du tableau */}
+          <div className="grid grid-cols-6 border-b border-gray-200 bg-gray-50 text-sm font-medium text-gray-600">
+            <div className="p-4 w-16">S/N</div>
+            <div className="p-4">Demandeur</div>
+            <div className="p-4">Date</div>
+            <div className="p-4">Message</div>
+            <div className="p-4">État</div>
+            <div className="p-4 text-center">Actions</div>
+          </div>
+
+          {/* Corps du tableau */}
+          {filteredOrders.length > 0 ? (
+            filteredOrders.map((order) => (
+              <div
+                key={order.id_dem_ordre}
+                className="grid grid-cols-6 border-b border-gray-200 hover:bg-gray-50 text-sm"
+              >
+                <div className="p-4 w-16">{order.id_dem_ordre}</div>
+                <div className="p-4">{order.user__username}</div>
+                <div className="p-4">{order.Date}</div>
+                <div className="p-4 truncate max-w-xs" title={order.Message_ordre}>
+                  {order.Message_ordre}
+                </div>
+                <div className="p-4">
+                  {getStatusBadge(order.Etat)}
+                </div>
+                <div className="p-4 flex items-center justify-center space-x-3">
+                  <button
+                    className="text-blue-500 hover:text-blue-600"
+                    onClick={() => navigate(`/rh/ordremissiondoc/${order.id_dem_ordre}`)}
+                    title="Voir les détails"
                   >
-                    {order.Etat}
-                  </td>
-                  <td className="px-4 py-3 flex items-center justify-center gap-4 text-sky-400">
-                    <Eye
-                      className="cursor-pointer hover:scale-110"
-                      onClick={() => {
-                        navigate("/rh/ordremissiondoc");
-                      }}
+                    <Eye className="h-5 w-5" color="#0086CA" />
+                  </button>
+                  <button
+                    className="text-blue-500 hover:text-blue-600"
+                    title="Télécharger l'ordre de mission"
+                    disabled={!["validée", "validee"].includes(order.Etat.toLowerCase())}
+                    onClick={() => {
+                      if (["validée", "validee"].includes(order.Etat.toLowerCase())) {
+                        downloadMissionOrder(order.id_dem_ordre);
+                      }
+                    }}
+                  >
+                    <CloudDownload
+                      className="h-5 w-5"
+                      color={["validée", "validee"].includes(order.Etat.toLowerCase()) ? "#0086CA" : "#AAAAAA"}
                     />
-                    <Trash2 className="cursor-pointer hover:scale-110" />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </button>
+                  <button
+                    className="text-blue-500 hover:text-blue-600"
+                    title="Supprimer"
+                    onClick={() => deleteMissionOrder(order.id_dem_ordre)}
+                  >
+                    <Trash2 className="h-5 w-5" color="#0086CA" />
+                  </button>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="p-4 text-center text-gray-500">
+              {searchTerm ? "Aucun ordre de mission ne correspond à votre recherche." : "Aucun ordre de mission disponible."}
+            </div>
+          )}
         </div>
       </div>
     </div>

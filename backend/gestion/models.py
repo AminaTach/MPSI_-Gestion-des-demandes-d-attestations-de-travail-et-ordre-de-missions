@@ -69,7 +69,7 @@ class DemandeOrdreMission(models.Model):
     departement = models.CharField(max_length=255)
     date_debut_mission = models.DateField()
     date_fin_mission = models.DateField()
-    objet_mission = models.FileField(upload_to='objets_mission/', blank=True, null=True)
+    objet_mission = models.TextField(blank=True, null=True)  # Changed from FileField to TextField
     piece_identite = models.CharField(max_length=255)
 
     def __str__(self):
@@ -78,7 +78,8 @@ class DemandeOrdreMission(models.Model):
 class OrdreMission(models.Model):
     id_ordre_mission = models.AutoField(primary_key=True)
     dem_ordre = models.OneToOneField(DemandeOrdreMission, on_delete=models.CASCADE)
-    Moyens_transport = models.JSONField()
+    # Changed from JSONField to CharField to match frontend usage
+    Moyens_transport = models.CharField(max_length=255)
     date_depart = models.DateField()
     date_retour = models.DateField()
     date_delivrance = models.DateField()

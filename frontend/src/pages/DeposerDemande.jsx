@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Header from '../components/Topbar';
 
@@ -6,7 +6,6 @@ const DeposerDemande = () => {
   const [activeSection, setActiveSection] = useState('main');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const fileInputRef = useRef(null);
 
   const [missionForm, setMissionForm] = useState({
     nom_employe: '',
@@ -15,10 +14,9 @@ const DeposerDemande = () => {
     date_debut_mission: '',
     date_fin_mission: '',
     Message_ordre: '',
-    piece_identite: null
+    piece_identite: '' // Modifié pour être un champ texte
   });
 
-  const [selectedFileName, setSelectedFileName] = useState('');
   const [certificateMessage, setCertificateMessage] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
   const [showModal, setShowModal] = useState(false);
@@ -33,24 +31,11 @@ const DeposerDemande = () => {
   }, []);
 
   const handleMissionFormChange = (e) => {
-    const { name, value, files } = e.target;
-
-    if (name === 'piece_identite' && files) {
-      setMissionForm({
-        ...missionForm,
-        [name]: files[0]
-      });
-      setSelectedFileName(files[0].name);
-    } else {
-      setMissionForm({
-        ...missionForm,
-        [name]: value
-      });
-    }
-  };
-
-  const handleFileButtonClick = () => {
-    fileInputRef.current.click();
+    const { name, value } = e.target;
+    setMissionForm({
+      ...missionForm,
+      [name]: value
+    });
   };
 
   const handleMissionSubmit = async (e) => {
@@ -79,9 +64,8 @@ const DeposerDemande = () => {
         date_debut_mission: '',
         date_fin_mission: '',
         Message_ordre: '',
-        piece_identite: null
+        piece_identite: ''
       });
-      setSelectedFileName('');
 
       setTimeout(() => {
         setShowSuccess(false);
@@ -358,30 +342,22 @@ const DeposerDemande = () => {
             />
             <div className="flex justify-between items-center">
               <div className="text-gray-700">
-                Pièce d'identité:
+                N° de la pièce d'identité:
               </div>
               <div className="text-gray-700 text-right">
-                وثيقة الهوية:
+                رقم وثيقة الهوية:
               </div>
             </div>
+            {/* Remplacé le téléchargement de fichier par un champ de texte */}
             <input
-              ref={fileInputRef}
-              type="file"
+              type="text"
               name="piece_identite"
+              value={missionForm.piece_identite}
               onChange={handleMissionFormChange}
-              className="hidden"
+              className="w-full p-3 border border-gray-300 rounded-md"
+              placeholder="CIN, Passeport, etc."
+              required
             />
-            <div className="border border-gray-300 rounded-md p-3 flex items-center justify-between cursor-pointer bg-white" onClick={handleFileButtonClick}>
-              <div className="text-gray-500 overflow-hidden text-ellipsis">
-                {selectedFileName || 'Aucun fichier sélectionné'}
-              </div>
-              <button
-                type="button"
-                className="bg-gray-100 hover:bg-gray-200 text-gray-700 py-1 px-4 rounded-md text-sm border border-gray-300"
-              >
-                Parcourir...
-              </button>
-            </div>
             <div className="flex justify-center mt-8">
               <button
                 type="submit"

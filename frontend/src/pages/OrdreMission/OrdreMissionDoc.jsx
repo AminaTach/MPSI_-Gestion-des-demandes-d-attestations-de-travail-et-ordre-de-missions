@@ -1,18 +1,26 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Header from "../../components/Topbar";
+import axios from "axios";
+import { useParams, useNavigate } from "react-router-dom";
 
 const OrdreMissionDoc = () => {
-  const order = {
-    id: "01",
-    demandeur: "Laouar Boutheyna",
-    date: "25/03/2025",
-    message: "message,messagemessagemessagemessagemessagemessagemessagemessagemessagemessagemessagemessagemessagemessagemessagemessagemessage",
+  const params = useParams();
+  const demandeId = params.demandeId;
+  const navigate = useNavigate();
+  
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [order, setOrder] = useState({
+    id: "",
+    demandeur: "",
+    date: "",
+    message: "",
     etat: "En attente",
-  };
+  });
 
   const [formData, setFormData] = useState({
-    missionNumber: "047",
-    year: "2025",
+    missionNumber: "",
+    year: new Date().getFullYear().toString(),
     name: "",
     position: "",
     fromLocation: "الجزائر",
@@ -23,31 +31,228 @@ const OrdreMissionDoc = () => {
     totalDays: "",
     totalHours: "",
     accommodationNights: "",
+    responsibleName: "",
+    responsibleFirstName: "",
+    identityDocument: "",
+    missionPurpose: "",
   });
+
+  useEffect(() => {
+    // Only fetch if we have a valid demandeId
+    if (demandeId) {
+      fetchMissionOrderDetails();
+    } else {
+      setLoading(false);
+      setError("No mission order ID provided. Please check the URL.");
+    }
+  }, [demandeId]);
+
+  const fetchMissionOrderDetails = async () => {
+    try {
+      setLoading(true);
+      // Make sure demandeId is included in the URL
+      const response = await axios.get(`http://localhost:8000/api/mission-orders/${demandeId}/details/`);
+      
+      if (response.data.success) {
+        const { demande, ordre_mission } = response.data;
+        
+        setOrder({
+          id: demande.id,
+          demandeur: demande.nom_employe,
+          date: new Date(demande.date_debut_mission).toLocaleDateString('fr-FR'),
+          message: demande.message || "",
+          etat: mapEtat(demande.etat),
+        });
+
+        // Calculate days between dates
+        const days = calculateDays(demande.date_debut_mission, demande.date_fin_mission);
+
+        setFormData({
+          missionNumber: demande.id,
+          year: new Date().getFullYear().toString(),
+          name: demande.nom_employe,
+          position: demande.poste,
+          fromLocation: "الجزائر",
+          toLocation: demande.departement,
+          transportation: ordre_mission ? ordre_mission.moyens_transport : "",
+          departureDate: ordre_mission ? ordre_mission.date_depart : demande.date_debut_mission,
+          returnDate: ordre_mission ? ordre_mission.date_retour : demande.date_fin_mission,
+          totalDays: days.toString(),
+          totalHours: "0",
+          accommodationNights: (days - 1).toString(),
+          responsibleName: ordre_mission ? ordre_mission.nom_responsable : "",
+          responsibleFirstName: ordre_mission ? ordre_mission.prenom_responsable : "",
+          identityDocument: demande.piece_identite || "",
+          missionPurpose: demande.objet_mission || "",
+        });
+      } else {
+        setError("Failed to load mission order details. Invalid response format.");
+      }
+    } catch (err) {
+      console.error("Error fetching mission order details:", err);
+      setError(`Failed to load mission order details: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const calculateDays = (startDate, endDate) => {
+    if (!startDate || !endDate) return 0;
+    
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    
+    // Check for invalid dates
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) return 0;
+    
+    const diffTime = Math.abs(end - start);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays + 1; // Including both start and end days
+  };
+
+  const mapEtat = (etat) => {
+    switch (etat) {
+      case "en_attente":
+        return "En attente";
+      case "validee":
+        return "Validée";
+      case "rejetee":
+        return "Rejetée";
+      default:
+        return etat || "En attente";
+    }
+  };
 
   const getStatusColor = (etat) => {
     switch (etat) {
       case "En attente":
         return "text-yellow-500";
       case "Validée":
-        return "text-green";
+        return "text-green-500";
       case "Rejetée":
-        return "text-red";
+        return "text-red-500";
       default:
-        return "text-gray";
+        return "text-gray-500";
     }
   };
 
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({
+      ...formData,
+      [name]: value,
+    });
+  };
+
+  const handleSubmit = async () => {
+    if (!demandeId) {
+      setError("Cannot submit - no mission order ID provided.");
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      // Prepare the data for submission
+      const submissionData = {
+        moyens_transport: formData.transportation,
+        date_depart: formData.departureDate,
+        date_retour: formData.returnDate,
+        date_delivrance: new Date().toISOString().split('T')[0],
+        lieu_delivrance: "Alger",
+        nom_responsable: formData.responsibleName,
+        prenom_responsable: formData.responsibleFirstName,
+      };
+
+      // Update mission order details - ensure demandeId is included in the URL
+      const response = await axios.post(
+        `http://localhost:8000/api/mission-orders/${demandeId}/update-details/`,
+        submissionData
+      );
+
+      if (response.data.success) {
+        alert("Mission order details updated successfully!");
+        // Generate PDF if the status is "validee"
+        if (order.etat === "Validée") {
+          window.open(`http://localhost:8000/api/mission-orders/${demandeId}/generate/`, "_blank");
+        }
+      } else {
+        setError("Failed to update mission order. Server returned an error.");
+      }
+    } catch (err) {
+      console.error("Error updating mission order:", err);
+      setError(`Failed to update mission order: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleStatusChange = async (newStatus) => {
+    if (!demandeId) {
+      setError("Cannot update status - no mission order ID provided.");
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      // Make sure demandeId is included in the URL
+      const response = await axios.post(
+        `http://localhost:8000/api/mission-orders/${demandeId}/update-status/`,
+        { status: newStatus }
+      );
+
+      if (response.data.success) {
+        setOrder({
+          ...order,
+          etat: mapEtat(newStatus),
+        });
+        alert(`Status updated to ${mapEtat(newStatus)}`);
+      } else {
+        setError("Failed to update status. Server returned an error.");
+      }
+    } catch (err) {
+      console.error("Error updating status:", err);
+      setError(`Failed to update status: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Rest of your component (UI rendering) remains mostly the same...
+  if (loading) {
+    return (
+      <div className="w-full h-screen flex items-center justify-center">
+        <p>Loading mission order details...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="w-full h-screen flex items-center justify-center">
+        <div className="text-red-500 p-4 bg-red-50 rounded-lg max-w-lg">
+          <h2 className="font-bold text-lg mb-2">Error</h2>
+          <p>{error}</p>
+          <button 
+            onClick={() => navigate(-1)}
+            className="mt-4 bg-gray-500 hover:bg-gray-600 text-white font-semibold px-4 py-2 rounded-md"
+          >
+            Go Back
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="w-full pb-4 font-nunito sm:w-[3/4]  ">
+    <div className="w-full pb-4 font-nunito sm:w-[3/4]">
       <Header />
-      <div className="grid grid-cols-1 bg-white max-w-6xl mx-4   gap-4 py-8 mt-4 px-4 md:px-8 rounded-3xl shadow-md">
+      <div className="grid grid-cols-1 bg-white max-w-6xl mx-4 gap-4 py-8 mt-4 px-4 md:px-8 rounded-3xl shadow-md">
         <h2 className="text-2xl font-semibold mb-6">
-          Traitement de l’ordre de mission de:
+          Traitement de l'ordre de mission de:
         </h2>
 
-        <div className="overflow-auto ">
-          <table className=" w-full text-sm text-left">
+        <div className="overflow-auto">
+          <table className="w-full text-sm text-left">
             <thead>
               <tr className="text-gray-600">
                 <th className="px-4 py-2">S/N</th>
@@ -55,6 +260,7 @@ const OrdreMissionDoc = () => {
                 <th className="px-4 py-2">Date</th>
                 <th className="px-4 py-2">Message</th>
                 <th className="px-4 py-2">Etat</th>
+                <th className="px-4 py-2">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -65,9 +271,24 @@ const OrdreMissionDoc = () => {
                 <td className="px-4 py-2 max-w-xs break-words whitespace-normal">
                   {order.message}
                 </td>
-
                 <td className={`px-4 py-2 ${getStatusColor(order.etat)}`}>
                   {order.etat}
+                </td>
+                <td className="px-4 py-2">
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => handleStatusChange("validee")}
+                      className="px-2 py-1 bg-emerald-500 hover:bg-emerald-600 text-white rounded-md text-xs"
+                    >
+                      Valider
+                    </button>
+                    <button
+                      onClick={() => handleStatusChange("rejetee")}
+                      className="px-2 py-1 bg-red-500 text-white rounded-md text-xs"
+                    >
+                      Rejeter
+                    </button>
+                  </div>
                 </td>
               </tr>
             </tbody>
@@ -133,10 +354,39 @@ const OrdreMissionDoc = () => {
         <div className="space-y-4" dir="rtl">
           <div className="flex items-center">
             <div className="flex-1">إن السيد(ة):</div>
+            <div className="flex-1 mx-4">
+              <input
+                type="text"
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                className="border-b border-gray-400 w-full outline-none"
+              />
+            </div>
           </div>
 
           <div className="flex items-center">
             <div className="flex-1">بأمر السيد(ة):</div>
+            <div className="flex-1 mx-4">
+              <input
+                type="text"
+                name="responsibleName"
+                value={formData.responsibleName}
+                onChange={handleChange}
+                className="border-b border-gray-400 w-full outline-none"
+                placeholder="Nom du responsable"
+              />
+            </div>
+            <div className="flex-1 mx-4">
+              <input
+                type="text"
+                name="responsibleFirstName"
+                value={formData.responsibleFirstName}
+                onChange={handleChange}
+                className="border-b border-gray-400 w-full outline-none"
+                placeholder="Prénom du responsable"
+              />
+            </div>
           </div>
 
           <div className="flex items-center">
@@ -144,6 +394,8 @@ const OrdreMissionDoc = () => {
             <div className="flex-1 mx-4">
               <input
                 type="text"
+                value="المدرسة الوطنية العليا للإعلام"
+                readOnly
                 className="border-b border-gray-400 w-full outline-none"
               />
             </div>
@@ -151,6 +403,9 @@ const OrdreMissionDoc = () => {
             <div className="flex-1 mx-4">
               <input
                 type="text"
+                name="position"
+                value={formData.position}
+                onChange={handleChange}
                 className="border-b border-gray-400 w-full outline-none"
               />
             </div>
@@ -161,6 +416,9 @@ const OrdreMissionDoc = () => {
             <div className="flex-1 mx-4">
               <input
                 type="text"
+                name="fromLocation"
+                value={formData.fromLocation}
+                onChange={handleChange}
                 className="border-b border-gray-400 w-full outline-none"
               />
             </div>
@@ -168,6 +426,9 @@ const OrdreMissionDoc = () => {
             <div className="flex-1 mx-4">
               <input
                 type="text"
+                name="toLocation"
+                value={formData.toLocation}
+                onChange={handleChange}
                 className="border-b border-gray-400 w-full outline-none"
               />
             </div>
@@ -178,6 +439,9 @@ const OrdreMissionDoc = () => {
             <div className="flex-1 mx-4">
               <input
                 type="text"
+                name="missionPurpose"
+                value={formData.missionPurpose}
+                onChange={handleChange}
                 className="border-b border-gray-400 w-full outline-none"
               />
             </div>
@@ -188,6 +452,9 @@ const OrdreMissionDoc = () => {
             <div className="flex-1 mx-4">
               <input
                 type="text"
+                name="transportation"
+                value={formData.transportation}
+                onChange={handleChange}
                 className="border-b border-gray-400 w-full outline-none"
               />
             </div>
@@ -197,7 +464,10 @@ const OrdreMissionDoc = () => {
             <div>تاريخ الذهاب:</div>
             <div className="flex-1 mx-4">
               <input
-                type="text"
+                type="date"
+                name="departureDate"
+                value={formData.departureDate}
+                onChange={handleChange}
                 className="border-b border-gray-400 w-full outline-none"
               />
             </div>
@@ -207,7 +477,10 @@ const OrdreMissionDoc = () => {
             <div>تاريخ الرجوع:</div>
             <div className="flex-1 mx-4">
               <input
-                type="text"
+                type="date"
+                name="returnDate"
+                value={formData.returnDate}
+                onChange={handleChange}
                 className="border-b border-gray-400 w-full outline-none"
               />
             </div>
@@ -226,360 +499,74 @@ const OrdreMissionDoc = () => {
         {/* Identity document */}
         <div className="grid grid-cols-3 gap-4 my-6" dir="rtl">
           <div>وثيقة الهوية:</div>
-          <div>المسلمة في:</div>
+          <div>
+            <input
+              type="text"
+              name="identityDocument"
+              value={formData.identityDocument}
+              onChange={handleChange}
+              className="border-b border-gray-400 w-full outline-none"
+            />
+          </div>
           <div>رقم:</div>
         </div>
 
-        {/* Signature area */}
-        <div className="text-center my-6" dir="rtl">
-          <div>في:</div>
-          <div>مسؤول المصلحة الذي أصدار الأمر بالمهمة</div>
-        </div>
+        {/* Total transportation time */}
+        <div className="grid grid-cols-6 border-b border-gray-400 my-6">
+          <div className="col-span-1 p-2 text-right" dir="rtl">
+            مجموع مدة التنقل:
+          </div>
+          <div className="col-span-1 p-2 text-center border-r border-gray-400">
+            <input
+              type="text"
+              name="totalDays"
+              value={formData.totalDays}
+              onChange={handleChange}
+              className="w-full outline-none text-center"
+            />
+          </div>
 
-        {/* Additional sections */}
-        <div className="mt-6" dir="rtl">
-          <div className="border border-gray-400 w-full">
-            <div className="border-b border-gray-400 p-2 text-center" dir="rtl">
-              خانة مخصصة للتأشيرات(1)
-            </div>
+          <div
+            className="col-span-1 p-2 text-center border-r border-gray-400"
+            dir="rtl"
+          >
+            أيام:
+          </div>
 
-            {/* Arrival and departure dates */}
-            <div className="grid grid-cols-2 border-b border-gray-400">
-              <div className="col-span-1 border-r border-gray-400 p-2 text-center">
-                تاريخ ووقت الخروج
-              </div>
-              <div className="col-span-1 p-2 text-center">
-                تاريخ ووقت الوصول
-              </div>
-            </div>
-
-            {/* Advance payment */}
-            <div className="grid grid-cols-1 border-b border-gray-400">
-              <div className="p-2 text-right" dir="rtl">
-                تسبيق محصل عليه عند الذهاب - حصل على مبلغ:
-                ........................
-              </div>
-            </div>
-
-            {/* Account details */}
-            <div className="grid grid-cols-4 border-b border-gray-400">
-              <div className="col-span-1 p-2 text-right " dir="rtl">
-                بعنوان تسبيق تبعا لكشف الحساب رقم:
-              </div>
-              <div className="col-span-1 p-2 text-center border-x border-gray-400">
-                ...................................
-              </div>
-              <div className="col-span-1 p-2 text-center border-x border-gray-400">
-                لهذا اليوم
-              </div>
-
-              <div className="col-span-1 p-2 text-center">
-                ...................................
-              </div>
-            </div>
-
-            {/* Location */}
-            <div className="grid grid-cols-4 border-b border-gray-400">
-              <div className="col-span-1 p-2 text-center border-x border-gray-400">
-                ب:
-              </div>
-              <div className="col-span-1 p-2 text-center">
-                ...................................
-              </div>
-              <div className="col-span-1 p-2 text-center border-x border-gray-400">
-                في:
-              </div>
-              <div className="col-span-1 p-2 text-center">
-                ...................................
-              </div>
-            </div>
-
-            {/* Transportation implementation section */}
-            <div className="grid grid-cols-1 border-b border-gray-400 p-2 text-center">
-              تنفيذ التنقل
-            </div>
-
-            {/* Headers for travel details */}
-            <div className="grid grid-cols-9 border-b border-gray-400">
-              <div
-                className="col-span-1 p-2 text-center border-r border-gray-400"
-                dir="rtl"
-              >
-                الوجهات
-              </div>
-              <div className="col-span-8 p-2 text-center" dir="rtl">
-                التواريخ - الساعات
-              </div>
-            </div>
-
-            {/* Transportation table header */}
-            <div className="grid grid-cols-9 border-b border-gray-400 items-center">
-              <div
-                className="col-span-1 p-2 text-center border-r border-gray-400"
-                dir="rtl"
-              >
-                وسيلة النقل
-              </div>
-
-              {/* Return to site */}
-              <div className="col-span-2 text-center border-r border-gray-400">
-                <div className="p-1 border-b border-gray-400" dir="rtl">
-                  الوصول الى الموقع
-                </div>
-                <div className="grid grid-cols-2">
-                  <div className="p-1 border-r border-gray-400" dir="rtl">
-                    الساعة
-                  </div>
-                  <div className="p-1" dir="rtl">
-                    التاريخ
-                  </div>
-                </div>
-              </div>
-
-              {/* Return to site */}
-              <div className="col-span-2 text-center border-r border-gray-400">
-                <div className="p-1 border-b border-gray-400" dir="rtl">
-                  العودة الى الموقع
-                </div>
-                <div className="grid grid-cols-2">
-                  <div className="p-1 border-r border-gray-400" dir="rtl">
-                    الساعة
-                  </div>
-                  <div className="p-1" dir="rtl">
-                    التاريخ
-                  </div>
-                </div>
-              </div>
-
-              {/* Arrival to destination */}
-              <div className="col-span-2 text-center border-r border-gray-400">
-                <div className="p-1 border-b border-gray-400" dir="rtl">
-                  الوصول الى الوجهة
-                </div>
-                <div className="grid grid-cols-2">
-                  <div className="p-1 border-r border-gray-400" dir="rtl">
-                    الساعة
-                  </div>
-                  <div className="p-1" dir="rtl">
-                    التاريخ
-                  </div>
-                </div>
-              </div>
-
-              {/* Departure from location */}
-              <div className="col-span-2 text-center">
-                <div className="p-1 border-b border-gray-400" dir="rtl">
-                  الذهاب من الموقع
-                </div>
-                <div className="grid grid-cols-2">
-                  <div className="p-1 border-r border-gray-400" dir="rtl">
-                    الساعة
-                  </div>
-                  <div className="p-1" dir="rtl">
-                    التاريخ
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* First journey row */}
-            <div className="grid grid-cols-9 border-b border-gray-400">
-              {/* Location details */}
-              <div
-                className="col-span-1 text-right border-t border-gray-400 p-2"
-                dir="rtl"
-              >
-                من: الجزائر
-                <br />
-                إلى: جامعة الأغواط
-              </div>
-
-              {/* Empty cells for first journey */}
-              <div className="col-span-2 border-r border-gray-400">
-                <div className="grid grid-cols-2 h-full">
-                  <div className="border-r border-gray-400 p-2"></div>
-                  <div className="p-2"></div>
-                </div>
-              </div>
-
-              <div className="col-span-2 border-r border-gray-400">
-                <div className="grid grid-cols-2 h-full">
-                  <div className="border-r border-gray-400 p-2"></div>
-                  <div className="p-2"></div>
-                </div>
-              </div>
-
-              <div className="col-span-2 border-r border-gray-400">
-                <div className="grid grid-cols-2 h-full">
-                  <div className="border-r border-gray-400 p-2"></div>
-                  <div className="p-2"></div>
-                </div>
-              </div>
-
-              <div className="col-span-2">
-                <div className="grid grid-cols-2 h-full">
-                  <div className="border-r border-gray-400 p-2"></div>
-                  <div className="p-2"></div>
-                </div>
-              </div>
-            </div>
-
-            {/* Second journey row */}
-            <div className="grid grid-cols-9 border-b border-gray-400">
-              {/* Location details */}
-              <div
-                className="col-span-1 text-right border-t border-gray-400 p-2"
-                dir="rtl"
-              >
-                من: .......
-                <br />
-                إلى: .......
-              </div>
-
-              {/* Empty cells for third journey */}
-              <div className="col-span-2 border-r border-gray-400">
-                <div className="grid grid-cols-2 h-full">
-                  <div className="border-r border-gray-400 p-2"></div>
-                  <div className="p-2"></div>
-                </div>
-              </div>
-
-              <div className="col-span-2 border-r border-gray-400">
-                <div className="grid grid-cols-2 h-full">
-                  <div className="border-r border-gray-400 p-2"></div>
-                  <div className="p-2"></div>
-                </div>
-              </div>
-
-              <div className="col-span-2 border-r border-gray-400">
-                <div className="grid grid-cols-2 h-full">
-                  <div className="border-r border-gray-400 p-2"></div>
-                  <div className="p-2"></div>
-                </div>
-              </div>
-
-              <div className="col-span-2">
-                <div className="grid grid-cols-2 h-full">
-                  <div className="border-r border-gray-400 p-2"></div>
-                  <div className="p-2"></div>
-                </div>
-              </div>
-            </div>
-
-            {/* Third journey row */}
-            <div className="grid grid-cols-9 border-b border-gray-400">
-              {/* Location details */}
-              <div
-                className="col-span-1 text-right border-t border-gray-400 p-2"
-                dir="rtl"
-              >
-                من: .......
-                <br />
-                إلى: .......
-              </div>
-
-              {/* Empty cells for third journey */}
-              <div className="col-span-2 border-r border-gray-400">
-                <div className="grid grid-cols-2 h-full">
-                  <div className="border-r border-gray-400 p-2"></div>
-                  <div className="p-2"></div>
-                </div>
-              </div>
-
-              <div className="col-span-2 border-r border-gray-400">
-                <div className="grid grid-cols-2 h-full">
-                  <div className="border-r border-gray-400 p-2"></div>
-                  <div className="p-2"></div>
-                </div>
-              </div>
-
-              <div className="col-span-2 border-r border-gray-400">
-                <div className="grid grid-cols-2 h-full">
-                  <div className="border-r border-gray-400 p-2"></div>
-                  <div className="p-2"></div>
-                </div>
-              </div>
-
-              <div className="col-span-2">
-                <div className="grid grid-cols-2 h-full">
-                  <div className="border-r border-gray-400 p-2"></div>
-                  <div className="p-2"></div>
-                </div>
-              </div>
-            </div>
-
-            {/* Total transportation time */}
-            <div className="grid grid-cols-6 border-b border-gray-400">
-              <div className="col-span-1 p-2 text-right" dir="rtl">
-                مجموع مدة التنقل:
-              </div>
-              <div className="col-span-1 p-2 text-center border-r border-gray-400">
-                .......................
-              </div>
-
-              <div
-                className="col-span-1 p-2 text-center border-r border-gray-400"
-                dir="rtl"
-              >
-                أيام:
-              </div>
-
-              <div className="col-span-1 p-2 text-center border-r border-gray-400">
-                .......................
-              </div>
-              <div
-                className="col-span-1 p-2 text-center border-r border-gray-400"
-                dir="rtl"
-              >
-                ساعات:
-              </div>
-
-              <div className="col-span-1 p-2 text-center border-r border-gray-400">
-                .......................
-              </div>
-            </div>
-
-            {/* Accommodation nights */}
-            <div className="grid grid-cols-2 border-b border-gray-400">
-              <div
-                className="col-span-1 p-2 text-right border-r border-gray-400"
-                dir="rtl"
-              >
-                عدد الليالي في ضيافة المصلحة المستقبلة:
-              </div>
-              <div className="col-span-1 p-2 text-center">
-                .......................................................................................
-              </div>
-            </div>
+          <div className="col-span-1 p-2 text-center border-r border-gray-400">
+            <input
+              type="text"
+              name="totalHours"
+              value={formData.totalHours}
+              onChange={handleChange}
+              className="w-full outline-none text-center"
+            />
+          </div>
+          <div
+            className="col-span-1 p-2 text-center border-r border-gray-400"
+            dir="rtl"
+          >
+            ساعات:
           </div>
         </div>
 
-        {/* Verification section */}
-        <div className="grid grid-cols-2 border border-gray-400 border-t-0 mt-0">
-          <div className="p-4" dir="rtl">
-            <div>يثبت (3) حقيقة الخدمة وصحة المعلومات المسجلة أعلاه</div>
-            <div className="mt-4">
-              حرر بـ ............... في: ..............................
-            </div>
+        {/* Accommodation nights */}
+        <div className="grid grid-cols-2 border-b border-gray-400 my-6">
+          <div
+            className="col-span-1 p-2 text-right border-r border-gray-400"
+            dir="rtl"
+          >
+            عدد الليالي في ضيافة المصلحة المستقبلة:
           </div>
-          <div className="border-l border-gray-400 p-4" dir="rtl">
-            <div>
-              إن (3) السيد/السيدة: ................................. يشهد بصحة
-              البيانات المسجلة أعلاه
-            </div>
-            <div className="mt-4">
-              بـ ............................ في: ..............................
-            </div>
-            <div className="mt-4">الإمضاء</div>
+          <div className="col-span-1 p-2 text-center">
+            <input
+              type="text"
+              name="accommodationNights"
+              value={formData.accommodationNights}
+              onChange={handleChange}
+              className="w-full outline-none text-center"
+            />
           </div>
-        </div>
-
-        {/* Footnotes */}
-        <div className="mt-4 text-sm" dir="rtl">
-          <div>(1) : الهيئة أو المصلحة المستقبلة.</div>
-          <div>(2) : اسم و لقب المأمور بمهمة.</div>
-          <div>(3) : رئيس المصلحة أو الهيئة المستقبلة.</div>
-          <div>(تشطب البيانات غير المفيدة)</div>
         </div>
 
         {/* Footer with contact information */}
@@ -591,10 +578,27 @@ const OrdreMissionDoc = () => {
           <div>Tél : 023.93.91.32 Fax : 023.93.91.34 ; http://www.esi.dz</div>
         </div>
 
-        {/* Register button */}
-        <div className="mt-8 flex justify-center">
-          <button className="bg-[#0086CA] hover:bg-[#244e74] text-white font-semibold px-24 py-2 rounded-3xl">
+        {/* Action buttons */}
+        <div className="mt-8 flex justify-center space-x-4">
+          <button 
+            onClick={handleSubmit}
+            className="bg-[#0086CA] hover:bg-[#244e74] text-white font-semibold px-8 py-2 rounded-3xl"
+          >
             Enregistrer
+          </button>
+          {order.etat === "Validée" && (
+            <button 
+              onClick={() => window.open(`http://localhost:8000/api/mission-orders/${demandeId}/generate/`, "_blank")}
+              className="bg-[#22c55e] hover:bg-[#15803d] text-white font-semibold px-8 py-2 rounded-3xl"
+            >
+              Générer PDF
+            </button>
+          )}
+          <button 
+            onClick={() => navigate(-1)}
+            className="bg-gray-500 hover:bg-gray-600 text-white font-semibold px-8 py-2 rounded-3xl"
+          >
+            Retour
           </button>
         </div>
       </div>

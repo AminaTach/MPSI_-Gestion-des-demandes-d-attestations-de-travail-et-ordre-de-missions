@@ -45,7 +45,7 @@ function AppContent({ role, setRole }) {
             {/* RH Ordre Mission */}
             <Route path="/rh/ordremissionform" element={<OrdreMissionForm />} />
             <Route path="/rh/ordremissiontable" element={<OrdreMissionTable />} />
-            <Route path="/rh/ordremissiondoc" element={<OrdreMissionDoc />} />
+            <Route path="/rh/ordremissiondoc/:demandeId" element={<OrdreMissionDoc />} />
             {/* Add other protected routes here */}
             <Route path="/rh/docs" element={<RH />} />
             <Route path="/rh/attestation" element={<AttestationsTravail />} />
